@@ -1,122 +1,207 @@
-# OneLLM
+<p align="center">
+  <h1 align="center">🚀 OneLLM</h1>
+  <p align="center">
+    <strong>One API, Every Model. Under Control.</strong>
+  </p>
+  <p align="center">
+    One entry point for 15+ Chinese LLM providers | Ship fast, stay in control
+  </p>
+</p>
 
-> LLM Gateway → Agent Control Plane  
-> 基于 Portkey 开源引擎构建，从"帮团队管好模型调用"起步，进化为"帮企业管住 Agent 不烧钱不闯祸"。
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs Welcome">
+  <img src="https://img.shields.io/badge/providers-84-orange" alt="84 Providers">
+</p>
 
 ---
 
-## 产品愿景
-
-```
-Phase 1 (当前)          Phase 2 (未来)
-═══════════════          ═══════════════
-
-统一 API 接入            Agent 身份体系
-多模型路由               MCP Gateway
-成本追踪                 工具级权限
-管理控制台               预算硬熔断
-企业治理                 执行分级管控
-私有化部署               死循环检测
-                         Agent 可视化
-```
-
-## 架构
-
-```
-ai-hub/
-├── gateway-core/          # 核心网关引擎 (基于 Portkey gateway-main)
-│   ├── src/
-│   │   ├── providers/     # 30+ 模型提供商适配器
-│   │   ├── handlers/      # API 端点处理器
-│   │   ├── middlewares/   # 请求/响应中间件
-│   │   └── services/      # 内部服务
-│   ├── pricing/           # 模型定价数据 (基于 Portkey models)
-│   └── plugins/           # 护栏插件
-│
-├── admin-api/             # 管理后台 API (自建)
-│   └── src/
-│       ├── routes/        # workspace, keys, users...
-│       └── services/      # auth, billing, audit...
-│
-├── admin-console/         # 管理控制台前端 (自建)
-│   └── src/
-│       └── pages/         # Dashboard, Keys, Teams...
-│
-├── agent-control-plane/   # Agent 控制平面 (Phase 2)
-│   └── src/
-│       ├── identity/      # Agent 身份 + 委托链
-│       ├── policy/        # OPA 策略引擎
-│       ├── budget/        # Token 预算熔断
-│       └── tiering/       # 执行分级管控
-│
-├── sdks/                  # 客户端 SDK
-│   ├── aihub-node/        # Node.js SDK
-│   └── aihub-python/      # Python SDK
-│
-├── dev-tools/             # 开发工具
-├── deploy/                # 部署配置 (K8s/Docker)
-└── docs/                  # 文档与集成示例
-```
-
-## 快速开始
-
-### 启动网关
+Consolidate all your scattered LLM API keys into a single entry point — with cost tracking, access control, and audit logging built in.
 
 ```bash
-cd gateway-core
+# Before: one key per provider, scattered everywhere
+OPENAI_KEY=sk-xxx
+DEEPSEEK_KEY=sk-yyy
+GLM_KEY=sk-zzz
+
+# After: one key to rule them all
+curl http://your-gateway:8787/v1/chat/completions \
+  -H "x-aihub-api-key: aihub_sk_xxx" \
+  -H "x-aihub-provider: deepseek" \
+  -d '{"model": "deepseek-chat", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+---
+
+## 💡 Why OneLLM
+
+| Problem | Without OneLLM | With OneLLM |
+|---------|---------------|-------------|
+| Adding a new model | Apply for key → change code → redeploy | Bind provider in dashboard, code stays the same |
+| Who's burning API credits | Surprise bill at end of month | Real-time dashboard + budget alerts |
+| Agent runaway spending | Discovered after quota blown | Workspace-level hard budget limits |
+| Teammate leaves | Rotate keys across every provider | Revoke one AI Hub key |
+| Compliance & audit | ❌ No visibility | ✅ Immutable audit logs |
+| Switch providers | Rewrite code, redeploy | Change one request header |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────┐     ┌────────────────────────────────────┐
+│   Your App   │ ──→ │        gateway-core :8787          │
+│  Your Agent  │     │    ┌──────────────────────────┐    │
+│  Your Script │     │    │ Auth → Route → Log → Forward │  │
+└─────────────┘     │    └──────────────────────────┘    │
+                    │              │                      │
+                    │    ┌─────────┴──────────┐          │
+                    │    ▼                    ▼          │
+                    │  80+ Provider Adapters   Request Logs │
+                    │  OpenAI·Claude·DeepSeek·GLM·Qwen···│
+                    │  Baichuan·Moonshot·MiniMax·Doubao···│
+                    └────────────────────────────────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              ▼                     ▼                     ▼
+      ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐
+      │  admin-api   │    │    Redis     │    │   MySQL 8.0      │
+      │  Management  │    │  Cache/Queue │    │  Users·Keys·     │
+      │  :3100       │    │              │    │  Audit·Budgets   │
+      └──────┬───────┘    └──────────────┘    └──────────────────┘
+             │
+             ▼
+      ┌──────────────┐
+      │admin-console │
+      │  Dashboard   │
+      │  :3101       │
+      │React+Ant Des │
+      └──────────────┘
+```
+
+---
+
+## ✨ Highlights
+
+- **OpenAI-compatible API** — Zero-effort migration, not a single line of code to change
+- **84 providers, one endpoint** — Chinese and international, bind whichever you need
+- **Virtual key system** — `aihub_sk_` for API calls / `aihub_ag_` for agents, one key → multiple providers
+- **Multi-tenant workspaces** — Team isolation, member invitations, RBAC
+- **Budget controls** — Monthly/daily budgets + 80%/100% threshold alerts + hard circuit breaker
+- **Immutable audit logs** — Every admin action recorded append-only — who did what and when
+- **Provider smoke tests** — One-click connectivity check across all vendors, CI-friendly
+- **K8s ready** — Helm Charts included; Docker Compose for quick dev
+- **Native SDKs** — Node.js & Python, auth logic wrapped, plug and play
+
+---
+
+## ⚡ Up and running in one minute
+
+### Prerequisites
+
+- Node.js ≥ 18
+- Docker (for Redis & MySQL)
+- MySQL 8.0
+
+### 1. Gateway only (quick test)
+
+```bash
+git clone https://github.com/EmilyLi2026/OneLLM.git
+cd OneLLM/gateway-core
 npm install
+docker-compose up -d redis
 npm run dev:node
-# → http://localhost:8787
-```
 
-### 测试调用
-
-```bash
+# Send a test request
 curl http://localhost:8787/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "x-portkey-provider: openai" \
-  -H "x-portkey-api-key: sk-your-key" \
-  -d '{
-    "model": "gpt-4o-mini",
-    "messages": [{"role": "user", "content": "Hello"}]
-  }'
+  -H "x-portkey-provider: deepseek" \
+  -H "x-portkey-api-key: your-deepseek-key" \
+  -d '{"model": "deepseek-chat", "messages": [{"role": "user", "content": "Explain AI in one sentence"}]}'
 ```
 
-### Docker 部署
+### 2. Full stack (Gateway + Admin API + Console)
 
 ```bash
-docker-compose up -d
+# Step A: Set up MySQL and create the database
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS onellm CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# Step B: Configure and run the admin API
+cd admin-api
+cp .env.example .env          # edit .env — fill in DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+npm install
+npx tsx src/db/migrate.ts     # run schema migrations (creates tables + seed data)
+npx tsx src/index.ts          # start admin API → http://localhost:3100
+
+# Step C: Start the admin console
+cd ../admin-console
+npm install
+npx vite                      # → http://localhost:3101
 ```
 
-## 研发阶段
+The schema is defined in [`admin-api/src/db/schema.sql`](admin-api/src/db/schema.sql) — it covers 10+ tables including users, workspaces, API keys, provider credentials, agents, request logs, audit logs, budget alerts, and a model catalog with 12 Chinese providers pre-seeded.
 
-| 阶段 | 时间 | 目标 |
-|------|------|------|
-| **Phase 0** | 第 0-1 月 | 地基搭建：网关运行 + Agent 日志字段预留 |
-| **Phase 1** | 第 1-4 月 | Portkey 能力覆盖：管理控制台 + 企业治理 |
-| **Phase 2** | 第 4-7 月 | Agent 控制平面：MCP GW + 身份 + 权限 + 预算 |
+---
 
-## 技术栈
+## 📦 Project Structure
 
-| 组件 | 技术 |
-|------|------|
-| 网关核心 | TypeScript + Hono |
-| 管理后台 API | Node.js |
-| 管理控制台 | React + Ant Design |
-| 数据库 | PostgreSQL + ClickHouse |
-| 缓存 | Redis |
-| 策略引擎 | OPA |
+```
+OneLLM/
+├── gateway-core/           # Core gateway — 84 provider adapters
+├── admin-api/              # Management backend — users, keys, workspaces, audit
+├── admin-console/          # Management dashboard — React + Ant Design
+├── agent-control-plane/    # Agent Control Plane (Phase 2)
+├── frontend/               # Marketing site
+├── sdks/                   # Client SDKs (Node.js / Python)
+├── dev-tools/smoke-test/   # Provider connectivity smoke tests
+├── deploy/charts/          # Kubernetes Helm Charts
+├── docs/                   # Integration docs & examples
+└── docker-compose.yml      # One-command startup
+```
 
-## 基于的开源项目
+---
 
-本产品基于以下 MIT 许可的开源项目构建：
+## 🛠️ Tech Stack
 
-- [Portkey AI Gateway](https://github.com/Portkey-AI/gateway) — 核心路由引擎
-- [Portkey Models](https://github.com/Portkey-AI/models) — 模型定价数据
-- [Portkey MCP Tool Filter](https://github.com/Portkey-AI/mcp-tool-filter) — MCP 工具语义过滤
-- [Portkey Hoot](https://github.com/Portkey-AI/hoot) — MCP 测试工具
-- Portkey Node/Python SDKs — 客户端库
+| Component | Technology |
+|-----------|-----------|
+| Gateway Engine | TypeScript + Hono |
+| Admin API | Node.js + Express + TypeScript |
+| Admin Frontend | React + TypeScript + Ant Design + Vite |
+| Database | MySQL 8.0 |
+| Cache | Redis |
+| Deployment | Docker + Kubernetes (Helm) |
 
-## License
+---
 
-MIT
+## 🗺️ Roadmap
+
+| Phase | Focus | Status |
+|-------|-------|:--:|
+| M0 | Gateway engine, 15+ Chinese provider adapters, Agent API endpoints | ✅ |
+| M1 | Admin API + Console MVP, RBAC, audit logs, budget alerts | 🔄 |
+| M2 | Agent identity system, MCP Gateway, tool-level permissions | 📋 |
+| M3 | dead-loop detection, tiered execution | 📋 |
+| M4 | On-prem deployment enhancements, Agent visualization dashboard | 📋 |
+
+---
+
+## 🤝 Contributing
+
+Issues and PRs are welcome! To add a new provider adapter, check out the existing implementations under [gateway-core/src/providers/](gateway-core/src/providers/). A PR template is on the way.
+
+---
+
+## 🙏 Acknowledgments
+
+Built on these MIT-licensed open-source projects:
+
+- [Portkey AI Gateway](https://github.com/Portkey-AI/gateway) — Core routing engine
+- [Portkey Models](https://github.com/Portkey-AI/models) — Model pricing data
+- [Portkey MCP Tool Filter](https://github.com/Portkey-AI/mcp-tool-filter) — MCP tool filtering
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) © OneLLM
