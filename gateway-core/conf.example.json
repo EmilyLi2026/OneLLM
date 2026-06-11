@@ -1,0 +1,6 @@
+{
+  "admin_token": "set-a-strong-local-admin-token",
+  "plugins_enabled": ["default", "onellm"],
+  "credentials": {},
+  "cache": false
+}

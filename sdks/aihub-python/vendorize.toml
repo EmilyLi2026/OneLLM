@@ -1,0 +1,4 @@
+target = "portkey_ai/_vendor"
+packages = [
+    "openai==2.30.0"
+]

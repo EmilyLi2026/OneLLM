@@ -1,0 +1,36 @@
+{
+    "strategy": {
+        "mode": "loadbalance"
+    },
+    "targets": [
+        {
+            "virtual_key": "openai-virtual-key",
+            "override_params": {
+                "model": "gpt-3.5-turbo"
+            }
+        },
+        {
+            "strategy": {
+                "mode": "fallback",
+                "on_status_codes": [
+                    429,
+                    241
+                ]
+            },
+            "targets": [
+                {
+                    "virtual_key": "azure-virtual-key",
+                    "override_params": {
+                        "model": "gpt-35-turbo"
+                    }
+                },
+                {
+                    "virtual_key": "openai-virtual-key",
+                    "override_params": {
+                        "model": "gpt-3.5-turbo"
+                    }
+                }
+            ]
+        }
+    ]
+}

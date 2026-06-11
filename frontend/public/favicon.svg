@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 48 48">
+  <!-- left circle -->
+  <circle cx="18" cy="24" r="15" stroke="#1d1d1f" stroke-width="1.8" fill="none"/>
+  <!-- right circle -->
+  <circle cx="30" cy="24" r="15" stroke="#1d1d1f" stroke-width="1.8" fill="none"/>
+  <!-- center dot at intersection — the nexus -->
+  <circle cx="24" cy="24" r="5" fill="#1d1d1f"/>
+</svg>

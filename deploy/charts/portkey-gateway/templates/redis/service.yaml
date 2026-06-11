@@ -1,0 +1,17 @@
+{{- if eq .Values.environment.data.CACHE_STORE "redis" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.redis.serviceType | default "NodePort" }}
+  ports:
+    - port: {{ .Values.redis.servicePort | default ( .Values.redis.containerPort | default 6379 ) }}
+      targetPort: {{ .Values.redis.containerPort | default 6379 }}
+      protocol: TCP
+      name: "redis"
+  selector:
+    {{- include "redis.selectorLabels" . | nindent 4 }}
+{{- end -}}

@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "portkey.fullname" . }}-{{ .Values.frontend.name }}
+  labels:
+    {{- include "portkey.labels" . | nindent 4 }}
+  annotations:
+    {{- include "portkey.annotations" . | nindent 4 }}
+data:
+  nginx.conf: |
+    server {
+        listen {{ .Values.frontend.containerPort | default 80 }};
+        server_name localhost;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+        
+        location /config.js {
+            alias /usr/share/nginx/html/config.js;
+        }
+
+        location /albus/ {
+            rewrite ^/albus(.*)$ $1 break;
+            proxy_pass {{ include "portkey.backendURL" . }};
+            # Pass the original host header
+            proxy_set_header Host $http_host;
+            
+            # Pass the real IP of the client
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Original-URI $request_uri;
+
+            proxy_pass_request_headers on;
+            proxy_pass_request_body on;
+
+            proxy_buffering off;
+            # Optional: Increase limits if body gets truncated or dropped
+            client_max_body_size 100m;
+            proxy_request_buffering off;
+        }
+        {{- if or .Values.gateway.enabled .Values.config.defaultGatewayURL }}
+        location /api/ {
+            rewrite ^/api(.*)$ $1 break;
+            {{- if .Values.config.defaultGatewayURL }}
+            proxy_pass {{ .Values.config.defaultGatewayURL }};
+            {{- else }}
+            proxy_pass {{ include "portkey.gatewayURL" . }};
+            {{- end }}
+            # Pass the original host header
+            proxy_set_header Host $http_host;
+            
+            # Pass the real IP of the client
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Original-URI $request_uri;
+
+            proxy_pass_request_headers on;
+            proxy_pass_request_body on;
+
+            proxy_buffering off;
+            # Optional: Increase limits if body gets truncated or dropped
+            client_max_body_size 100m;
+            proxy_request_buffering off;
+        }
+        {{- end}}
+
+        error_page 404 /index.html;
+
+        # Additional security headers
+        add_header X-Frame-Options "SAMEORIGIN";
+        add_header X-XSS-Protection "1; mode=block";
+        add_header X-Content-Type-Options "nosniff";
+    }
+  config.js: |
+    window.APP_CONFIG = { 
+      VITE_API_URL: "{{- if .Values.config.defaultGatewayURL }}{{ .Values.config.defaultGatewayURL }}{{- else }}{{ include "portkey.gatewayURL" . }}{{- end }}", 
+      VITE_BASE_URL: "/albus", 
+      VITE_PRIVATE_DEPLOYMENT: "ON", 
+      VITE_AUTH_MODE: "{{- if .Values.config.oauth.enabled }}SSO{{- end }}{{- if .Values.config.noAuth.enabled }}NO_AUTH{{- end }}", 
+      VITE_DISABLE_TESTIMONIAL: "{{- if .Values.config.disableTestimonial }}ON{{- else }}OFF{{- end }}",
+      VITE_LOGIN_DISCLAIMER: {{- .Values.config.loginDisclaimer | quote }},
+      VITE_CONFIGS_URL: "/albus/v2/utils/model-configs",
+      VITE_ONBOARDING_SUPPORT_MESSAGE: {{- .Values.config.onboardingSupportMessage | quote }},
+      VITE_PRESELECT_LOGIN_PERMISSION: "ON"
+    };

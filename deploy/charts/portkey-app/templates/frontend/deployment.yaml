@@ -1,0 +1,167 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "portkey.fullname" . }}-{{ .Values.frontend.name }}
+  labels:
+    {{- include "portkey.labels" . | nindent 4 }}
+    {{- with .Values.frontend.deployment.labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- include "portkey.annotations" . | nindent 4 }}
+    {{- with .Values.frontend.deployment.annotations }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if not .Values.frontend.autoscaling.enabled }}
+  replicas: {{ .Values.frontend.deployment.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "portkey.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ include "portkey.fullname" . }}-{{ .Values.frontend.name }}
+  template:
+    metadata:
+      annotations:
+      {{- if .Values.frontend.deployment.autoRestart }}
+        rollme: {{ randAlphaNum 5 | quote }}
+      {{- end }}
+      {{- with .Values.frontend.deployment.annotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- with .Values.frontend.deployment.labels }}
+            {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- include "portkey.labels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ include "portkey.fullname" . }}-{{ .Values.frontend.name }}
+    spec:
+      imagePullSecrets: 
+      {{- range .Values.imageCredentials }}
+      - name: {{ .name }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.frontend.deployment.podSecurityContext | nindent 8 }}
+      serviceAccountName: {{ include "frontend.serviceAccountName" . }}
+      containers:
+        - name: {{ .Values.frontend.name }}
+          {{- with .Values.frontend.deployment.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: VITE_API_URL
+              value: {{ .Values.config.defaultGatewayURL | quote }}
+            - name: VITE_BASE_URL
+              value: "{{ include "portkey.backendURL" . }}"
+            - name: VITE_PRIVATE_DEPLOYMENT
+              value: "ON"
+            {{- if .Values.config.oauth.enabled }}
+            - name: VITE_AUTH_MODE
+              value: "SSO"
+            {{- else if .Values.config.noAuth.enabled }}
+            - name: VITE_AUTH_MODE
+              value: "NO_AUTH"
+            {{- end }}
+            {{- with .Values.frontend.deployment.extraEnv }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.commonEnv }}
+              {{ toYaml . | nindent 12 }}
+            {{- end }}
+            {{- include "apm.commonEnv" . | nindent 12 }}
+          image: "{{ .Values.images.frontendImage.repository }}:{{ .Values.images.frontendImage.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.images.frontendImage.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Starting Nginx..."
+              exec nginx -g 'daemon off;'
+          ports:
+            - name: frontend
+              containerPort: {{ .Values.frontend.containerPort | default 80 }}
+              protocol: TCP
+          {{- with .Values.frontend.deployment.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.frontend.deployment.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.frontend.deployment.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.frontend.deployment.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.frontend.deployment.securityContext | nindent 12 }}
+          volumeMounts:
+            {{- with .Values.frontend.deployment.volumeMounts }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            - name: app-config
+              mountPath: /config
+            - name: app-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: nginx.conf
+            - name: app-config
+              mountPath: /usr/share/nginx/html/config.js
+              subPath: config.js
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /run
+            - name: tmp
+              mountPath: /tmp
+          {{- with .Values.frontend.deployment.extraContainerConfig }}
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+        {{- with .Values.frontend.deployment.sidecars }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.frontend.deployment.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.deployment.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.deployment.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.deployment.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.frontend.deployment.dnsPolicy }}
+      {{- if and (eq .Values.frontend.deployment.dnsPolicy "None") (empty .Values.frontend.deployment.dnsConfig.nameservers) }}
+        {{- fail "frontend: dnsPolicy \"None\" requires at least one entry in frontend.deployment.dnsConfig.nameservers" }}
+      {{- end }}
+      dnsPolicy: {{ .Values.frontend.deployment.dnsPolicy }}
+      {{- end }}
+      {{- with .Values.frontend.deployment.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- with .Values.frontend.deployment.volumes }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        - name: app-config
+          configMap:
+            name: {{ include "portkey.fullname" . }}-{{ .Values.frontend.name }}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+            # items:
+            #   - key: nginx.conf
+            #     path: nginx.conf
+            #   - key: config.js
+            #     path: config.js

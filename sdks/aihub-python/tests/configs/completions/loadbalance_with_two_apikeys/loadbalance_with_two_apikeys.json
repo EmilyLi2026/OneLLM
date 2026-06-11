@@ -1,0 +1,19 @@
+{
+    "strategy": {
+        "mode": "loadbalance"
+    },
+    "targets": [
+        {
+            "virtual_key": "openai-virtual-key",
+            "override_params": {
+                "model": "gpt-3.5-turbo-instruct"
+            }
+        },
+        {
+            "virtual_key": "anthropic-virtual-key",
+            "override_params": {
+                "model": "claude-2.1"
+            }
+        }
+    ]
+}

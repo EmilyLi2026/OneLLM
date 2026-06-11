@@ -1,0 +1,557 @@
+import { Uploadable } from 'openai/uploads';
+import { ApiClientInterface } from '../_types/generalTypes';
+import { ApiResource } from '../apiResource';
+import { RequestOptions } from '../baseClient';
+import { finalResponse, initOpenAIClient, overrideConfig } from '../utils';
+import { createHeaders } from './createHeaders';
+import { FileChunkingStrategyParam } from 'openai/resources/vector-stores/vector-stores';
+import { CursorPageParams, Metadata } from '../_types/sharedTypes';
+
+export class VectorStores extends ApiResource {
+  files: Files;
+  fileBatches: FileBatches;
+
+  constructor(client: any) {
+    super(client);
+    this.files = new Files(client);
+    this.fileBatches = new FileBatches(client);
+  }
+
+  async create(
+    _body: VectorStoreCreateParams,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    const body: VectorStoreCreateParams = _body;
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const result = await OAIclient.vectorStores
+      .create(body, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async retrieve(
+    vectorStoreID: string,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores
+      .retrieve(vectorStoreID, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async update(
+    vectorStoreID: string,
+    _body: VectorStoreUpdateParams,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    const body: VectorStoreUpdateParams = _body;
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores
+      .update(vectorStoreID, body, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async list(
+    _query?: VectorStoreListParams | RequestOptions,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    const query: VectorStoreListParams | RequestOptions | undefined = _query;
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores
+      .list(query as any, opts)
+      .withResponse();
+    return finalResponse(result);
+  }
+
+  async delete(
+    vectorStoreID: string,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores
+      .delete(vectorStoreID, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+}
+
+export class Files extends ApiResource {
+  async create(
+    vectorStoreID: string,
+    _body: FileCreateParams,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    const body: FileCreateParams = _body;
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.files
+      .create(vectorStoreID, body, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async retrieve(
+    fileID: string,
+    { vector_store_id }: { vector_store_id: string },
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.files
+      .retrieve(fileID, { vector_store_id }, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async list(
+    vectorStoreID: string,
+    _query?: FileListParams | RequestOptions,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    const query: FileListParams | RequestOptions | undefined = _query;
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+    const result = await OAIclient.vectorStores.files
+      .list(vectorStoreID, query as any, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async delete(
+    fileID: string,
+    { vector_store_id }: { vector_store_id: string },
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.files
+      .delete(fileID, { vector_store_id }, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async createAndPoll(
+    vectorStoreId: string,
+    _body: FileCreateParams,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    const body: FileCreateParams = _body;
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.files.createAndPoll(
+      vectorStoreId,
+      body,
+      opts
+    );
+
+    return result;
+  }
+
+  async poll(
+    vectorStoreID: string,
+    fileID: string,
+    params?: ApiClientInterface,
+    opts?: RequestOptions & { pollIntervalMs?: number }
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.files.poll(
+      vectorStoreID,
+      fileID,
+      opts
+    );
+
+    return result;
+  }
+
+  async upload(
+    vectorStoreId: string,
+    file: Uploadable,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.files.upload(
+      vectorStoreId,
+      file,
+      opts
+    );
+
+    return result;
+  }
+
+  async uploadAndPoll(
+    vectorStoreId: string,
+    file: Uploadable,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.files.uploadAndPoll(
+      vectorStoreId,
+      file,
+      opts
+    );
+
+    return result;
+  }
+}
+
+export class FileBatches extends ApiResource {
+  async create(
+    vectorStoreID: string,
+    _body: FileBatchCreateParams,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    const body: FileBatchCreateParams = _body;
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.fileBatches
+      .create(vectorStoreID, body, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async retrieve(
+    batchID: string,
+    { vector_store_id }: { vector_store_id: string },
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.fileBatches
+      .retrieve(batchID, { vector_store_id }, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async cancel(
+    batchID: string,
+    { vector_store_id }: { vector_store_id: string },
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+    const body = {};
+    const options = { body, ...opts };
+
+    const result = await OAIclient.vectorStores.fileBatches
+      .cancel(batchID, { vector_store_id }, options)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async createAndPoll(
+    vectorStoreId: string,
+    _body: FileBatchCreateParams,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    const body: FileBatchCreateParams = _body;
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.fileBatches.createAndPoll(
+      vectorStoreId,
+      body,
+      opts
+    );
+
+    return result;
+  }
+
+  async listFiles(
+    batchID: string,
+    _query?: FileBatchListFilesParams | RequestOptions,
+    params?: ApiClientInterface,
+    opts?: RequestOptions
+  ): Promise<any> {
+    const query: FileBatchListFilesParams | RequestOptions | undefined = _query;
+
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    const result = await OAIclient.vectorStores.fileBatches
+      .listFiles(batchID, query as any, opts)
+      .withResponse();
+
+    return finalResponse(result);
+  }
+
+  async poll(
+    vectorStoreID: string,
+    batchID: string,
+    params?: ApiClientInterface,
+    opts?: RequestOptions & { pollIntervalMs?: number }
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.fileBatches.poll(
+      vectorStoreID,
+      batchID,
+      opts
+    );
+
+    return result;
+  }
+
+  async uploadAndPoll(
+    vectorStoreId: string,
+    { files, fileIds = [] }: { files: Uploadable[]; fileIds?: string[] },
+    params?: ApiClientInterface,
+    opts?: RequestOptions & { pollIntervalMs?: number; maxConcurrency?: number }
+  ): Promise<any> {
+    if (params) {
+      const config = overrideConfig(this.client.config, params.config);
+      this.client.customHeaders = {
+        ...this.client.customHeaders,
+        ...createHeaders({ ...params, config }),
+      };
+    }
+
+    const OAIclient = initOpenAIClient(this.client);
+
+    const result = await OAIclient.vectorStores.fileBatches.uploadAndPoll(
+      vectorStoreId,
+      { files, fileIds },
+      opts
+    );
+    return result;
+  }
+}
+
+export interface ExpiresAfter {
+  anchor: 'last_active_at';
+  days: number;
+}
+
+export interface VectorStoreCreateParams {
+  chunking_strategy?: FileChunkingStrategyParam;
+  expires_after?: ExpiresAfter;
+  file_ids?: Array<string>;
+  metadata?: Metadata | null;
+  name?: string;
+  [key: string]: any;
+}
+
+export interface VectorStoreUpdateParams {
+  expires_after?: ExpiresAfter | null;
+  metadata?: Metadata | null;
+  name?: string | null;
+  [key: string]: any;
+}
+
+export interface VectorStoreListParams extends CursorPageParams {
+  before?: string;
+  order?: 'asc' | 'desc';
+}
+
+export interface FileCreateParams {
+  file_id: string;
+  chunking_strategy?: FileChunkingStrategyParam;
+  [key: string]: any;
+}
+
+export interface FileListParams extends CursorPageParams {
+  before?: string;
+  filter?: 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  order?: 'asc' | 'desc';
+  [key: string]: any;
+}
+
+export interface FileBatchCreateParams {
+  file_ids: Array<string>;
+  chunking_strategy?: FileChunkingStrategyParam;
+  [key: string]: any;
+}
+
+export interface FileBatchListFilesParams extends CursorPageParams {
+  before?: string;
+  filter?: 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  order?: 'asc' | 'desc';
+  vector_store_id: string;
+  [key: string]: any;
+}

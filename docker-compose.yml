@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  gateway:
+    build:
+      context: ./gateway-core
+      dockerfile: Dockerfile
+    ports:
+      - "8787:8787"
+    environment:
+      - NODE_ENV=production
+      - REDIS_CONNECTION_STRING=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Phase 1 additions (commented out until needed):
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: aihub
+  #     POSTGRES_PASSWORD: aihub
+  #     POSTGRES_DB: aihub
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pg_data:/var/lib/postgresql/data
+  #
+  # admin-api:
+  #   build: ./admin-api
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - postgres
+  #     - gateway
+  #
+  # admin-console:
+  #   build: ./admin-console
+  #   ports:
+  #     - "3001:3001"
+
+volumes:
+  redis_data:
+  # pg_data:

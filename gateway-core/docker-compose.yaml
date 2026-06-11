@@ -1,0 +1,7 @@
+version: '3'
+services:
+  web:
+    ports:
+      - "8787:8787"
+    image: "onellm/gateway:latest"
+    restart: always

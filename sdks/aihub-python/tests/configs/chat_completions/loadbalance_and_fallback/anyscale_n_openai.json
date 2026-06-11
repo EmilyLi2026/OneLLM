@@ -1,0 +1,36 @@
+{
+    "strategy": {
+        "mode": "loadbalance"
+    },
+    "targets": [
+        {
+            "virtual_key": "openai-virtual-key",
+            "override_params": {
+                "model": "gpt-3.5-turbo"
+            }
+        },
+        {
+            "strategy": {
+                "mode": "fallback",
+                "on_status_codes": [
+                    429,
+                    241
+                ]
+            },
+            "targets": [
+                {
+                    "virtual_key": "anyscale-virtual-key",
+                    "override_params": {
+                        "model": "mistralai/Mistral-7B-Instruct-v0.1"
+                    }
+                },
+                {
+                    "virtual_key": "openai-virtual-key",
+                    "override_params": {
+                        "model": "gpt-3.5-turbo"
+                    }
+                }
+            ]
+        }
+    ]
+}

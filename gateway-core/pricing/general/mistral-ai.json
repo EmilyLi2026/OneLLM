@@ -1,0 +1,327 @@
+{
+  "name": "mistral-ai",
+  "description": "",
+  "default": {
+    "params": [
+      { "key": "max_tokens", "defaultValue": 256, "minValue": 1, "maxValue": 32768 },
+      { "key": "temperature", "defaultValue": 0.7, "minValue": 0, "maxValue": 2 },
+      { "key": "top_p", "defaultValue": 1, "minValue": 0, "maxValue": 1 },
+      {
+        "key": "seed",
+        "defaultValue": null,
+        "minValue": 0,
+        "maxValue": 1
+      },
+      { "key": "stop", "defaultValue": null, "type": "array-of-strings", "skipValues": [null, []] },
+      { "key": "safe_prompt", "defaultValue": true, "type": "boolean" },
+      { "key": "stream", "defaultValue": true, "type": "boolean" }
+    ],
+    "messages": { "options": ["system", "user", "assistant"] },
+    "type": { "primary": "chat", "supported": [] }
+  },
+
+  "mistral-tiny": {
+    "params": [{ "key": "max_tokens", "maxValue": 32768 }],
+    "type": { "primary": "chat" }
+  },
+  "mistral-small": {
+    "params": [{ "key": "max_tokens", "maxValue": 32768 }],
+    "type": { "primary": "chat" }
+  },
+  "mistral-medium": {
+    "params": [{ "key": "max_tokens", "maxValue": 32768 }],
+    "type": { "primary": "chat" }
+  },
+  "magistral-medium-latest": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "magistral-small-latest": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "mistral-embed": {
+    "type": {
+      "primary": "embedding"
+    },
+    "disablePlayground": true
+  },
+  "mistral-large-latest": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "mistral-medium-latest": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "mistral-small-latest": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "open-mistral-7b": {
+    "type": {
+      "primary": "chat"
+    },
+    "disablePlayground": true
+  },
+  "open-mixtral-8x22b": {
+    "type": {
+      "primary": "chat"
+    },
+    "disablePlayground": true
+  },
+  "open-mixtral-8x7b": {
+    "type": {
+      "primary": "chat"
+    },
+    "disablePlayground": true
+  },
+  "mistral-large-2512": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-large-2411": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-medium-2505": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-medium-2508": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-vibe-cli-with-tools": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "codestral-2508": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "codestral-latest": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "pixtral-large-2411": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools", "image"]
+    }
+  },
+  "pixtral-large-latest": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools", "image"]
+    }
+  },
+  "mistral-large-pixtral-2411": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools", "image"]
+    }
+  },
+  "devstral-2512": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "devstral-latest": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "devstral-medium-latest": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-vibe-cli-latest": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "devstral-medium-2507": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "devstral-small-2507": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "labs-devstral-small-2512": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "devstral-small-latest": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-small-2506": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "labs-mistral-small-creative": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "magistral-medium-2509": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "magistral-small-2509": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "ministral-3b-2512": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "ministral-3b-latest": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "ministral-8b-2512": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "ministral-8b-latest": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "ministral-14b-2512": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "ministral-14b-latest": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "open-mistral-nemo": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "open-mistral-nemo-2407": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-tiny-2407": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "mistral-tiny-latest": {
+    "type": {
+      "primary": "chat"
+    }
+  },
+  "mistral-embed-2312": {
+    "disablePlayground": true,
+    "type": {
+      "primary": "embedding"
+    }
+  },
+  "codestral-embed": {
+    "disablePlayground": true,
+    "type": {
+      "primary": "embedding"
+    }
+  },
+  "codestral-embed-2505": {
+    "disablePlayground": true,
+    "type": {
+      "primary": "embedding"
+    }
+  },
+  "codestral-2501": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-large-2407": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-small-2409": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-small-2501": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "mistral-small-2503": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools"]
+    }
+  },
+  "pixtral-12b-2409": {
+    "type": {
+      "primary": "chat",
+      "supported": ["tools", "image"]
+    }
+  }
+}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Login Test</title></head>
+<body>
+<h2>AI Hub Login Test</h2>
+<input id="email" placeholder="email" value="test@aihub.dev"><br>
+<input id="pwd" type="password" placeholder="password" value="test123456"><br>
+<button id="login">Login</button>
+<pre id="result"></pre>
+
+<script>
+document.getElementById('login').onclick = async () => {
+  const email = document.getElementById('email').value;
+  const pwd = document.getElementById('pwd').value;
+  const result = document.getElementById('result');
+  result.textContent = 'Loading...';
+  try {
+    const resp = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await resp.json();
+    result.textContent = JSON.stringify(data, null, 2);
+    if (data.status === 'success') {
+      localStorage.setItem('aihub_token', data.data.token);
+      localStorage.setItem('aihub_user', JSON.stringify(data.data.user));
+      result.textContent += '\n\n✅ Login OK! Token stored.';
+      result.style.color = 'green';
+    } else {
+      result.style.color = 'red';
+    }
+  } catch (err) {
+    result.textContent = '❌ Error: ' + err.message;
+    result.style.color = 'red';
+  }
+};
+</script>
+</body></html>
