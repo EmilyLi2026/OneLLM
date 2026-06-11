@@ -192,13 +192,15 @@ Issues and PRs are welcome! To add a new provider adapter, check out the existin
 
 ---
 
-## 🙏 Acknowledgments
+## 💬 Community & Contact
 
-Built on these MIT-licensed open-source projects:
+- **Issues & Feature Requests** → [GitHub Issues](https://github.com/EmilyLi2026/OneLLM/issues)
+- **Enterprise / Commercial Inquiries** → `18610768620@163.com`
+- **WeChat** → `wxid_m4ffy544c8z322`
 
-- [Portkey AI Gateway](https://github.com/Portkey-AI/gateway) — Core routing engine
-- [Portkey Models](https://github.com/Portkey-AI/models) — Model pricing data
-- [Portkey MCP Tool Filter](https://github.com/Portkey-AI/mcp-tool-filter) — MCP tool filtering
+  ![](assets/kefu1.png)
+
+> 👋 I'm the maintainer. If you're a team or company looking to manage LLM calls at scale, I'd love to hear about your use case — and happy to help with deployment, customization, or commercial licensing.
 
 ---
 
