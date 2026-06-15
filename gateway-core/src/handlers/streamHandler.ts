@@ -376,6 +376,9 @@ export function handleStreamingMode(
         const outputPromise = new Promise<string>(r => { resolveOutput = r; });
         if (c) c.set('streamOutputPromise', outputPromise);
 
+        // Accumulate usage across chunks (Anthropic splits usage across events)
+        let accumulatedUsage: any = {};
+
         for await (const chunk of readStream(
           reader,
           splitPattern,
@@ -386,35 +389,65 @@ export function handleStreamingMode(
           gatewayRequest
         )) {
           // AI Hub: capture output content delta for request_logs
-          if (chunk.startsWith('data: ') && !chunk.includes('[DONE]')) {
+          // Handles both OpenAI SSE (chunk starts "data: ...") and
+          // Anthropic SSE (chunk has "event: ...\ndata: ...")
+          const isSSEChunk = chunk.startsWith('data: ') || chunk.includes('\ndata: ');
+          if (isSSEChunk && !chunk.includes('[DONE]')) {
             try {
-              const jsonStr = chunk.replace(/^data: /, '').trim();
-              if (jsonStr) {
+              // Extract the data: line from either format
+              let jsonStr: string;
+              if (chunk.startsWith('data: ')) {
+                jsonStr = chunk.replace(/^data: /, '').trim();
+              } else {
+                const dataLine = chunk.split('\n').find((l: string) => l.startsWith('data: '));
+                jsonStr = dataLine ? dataLine.replace(/^data: /, '').trim() : '';
+              }
+              if (jsonStr && jsonStr.startsWith('{')) {
                 const data = JSON.parse(jsonStr);
-                const delta = data?.choices?.[0]?.delta?.content;
-                if (typeof delta === 'string') {
-                  outputContent += delta;
+                // OpenAI SSE: {"choices":[{"delta":{"content":"text"}}]}
+                const openAIDelta = data?.choices?.[0]?.delta?.content;
+                if (typeof openAIDelta === 'string') {
+                  outputContent += openAIDelta;
+                }
+                // Anthropic SSE: {"delta":{"type":"text_delta","text":"..."}}
+                const anthropicTextDelta = data?.delta?.text;
+                if (typeof anthropicTextDelta === 'string') {
+                  outputContent += anthropicTextDelta;
+                }
+                // Anthropic thinking_delta
+                const anthropicThinkingDelta = data?.delta?.thinking;
+                if (typeof anthropicThinkingDelta === 'string') {
+                  outputContent += anthropicThinkingDelta;
                 }
               }
             } catch { /* ignore parse errors */ }
           }
 
-          // AI Hub: capture usage from the last SSE chunk for cost tracking
+          // AI Hub: capture usage from SSE chunks for cost tracking
+          // Accumulate across chunks because Anthropic splits usage:
+          //   message_start → input_tokens, message_delta → output_tokens
           if (chunk.includes('"usage"')) {
             try {
-              const jsonStr = chunk.replace(/^data: /, '').trim();
-              if (jsonStr && jsonStr !== '[DONE]') {
+              // Extract the data: line from either OpenAI or Anthropic SSE format
+              let jsonStr: string;
+              if (chunk.startsWith('data: ')) {
+                jsonStr = chunk.replace(/^data: /, '').trim();
+              } else {
+                const dataLine = chunk.split('\n').find((l: string) => l.startsWith('data: '));
+                jsonStr = dataLine ? dataLine.replace(/^data: /, '').trim() : '';
+              }
+              if (jsonStr && jsonStr.startsWith('{')) {
                 const data = JSON.parse(jsonStr);
                 if (data.usage) {
-                  resolveUsage(data.usage);
+                  accumulatedUsage = { ...accumulatedUsage, ...data.usage };
                 }
               }
             } catch { /* ignore parse errors */ }
           }
           await writer.write(encoder.encode(chunk));
         }
-        // If no usage was found, resolve with null
-        resolveUsage(null);
+        // Resolve usage with accumulated values
+        resolveUsage(Object.keys(accumulatedUsage).length > 0 ? accumulatedUsage : null);
         resolveOutput(outputContent);
       } catch (error) {
         console.error('Error during stream processing:', proxyProvider, error);

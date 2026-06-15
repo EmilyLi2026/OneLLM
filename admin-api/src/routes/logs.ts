@@ -106,9 +106,21 @@ logsRouter.get('/', async (req: AuthRequest, res) => {
     // Build sort safely (whitelisted)
     const orderClause = `ORDER BY rl.${sortField} ${sortOrder}`;
 
-    // Query data
+    // Query data (exclude large content columns — use detail endpoint for those)
+    const listColumns = [
+      'rl.id', 'rl.workspace_id', 'rl.user_id', 'rl.agent_id',
+      'rl.action_label', 'rl.conversation_turn', 'rl.agent_role', 'rl.session_id',
+      'rl.request_id', 'rl.model', 'rl.provider', 'rl.binding_id', 'rl.api_key_id',
+      'rl.tokens_in', 'rl.tokens_out', 'rl.cost_cents', 'rl.latency_ms',
+      'rl.status', 'rl.error_message', 'rl.tool_name', 'rl.tool_action', 'rl.execution_tier',
+      'rl.created_at',
+      'ak.name as api_key_name',
+      'ak.key_prefix as api_key_prefix'
+    ].join(', ');
+
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT rl.* FROM request_logs rl
+      `SELECT ${listColumns} FROM request_logs rl
+       LEFT JOIN api_keys ak ON rl.api_key_id = ak.id
        WHERE ${whereClause}
        ${orderClause}
        LIMIT ? OFFSET ?`,
@@ -186,8 +198,13 @@ logsRouter.get('/stats', async (req: AuthRequest, res) => {
       provider: 'rl.provider',
       agent: 'rl.agent_id',
       status: 'rl.status',
+      api_key: 'ak.name, rl.api_key_id',
     };
+    const selectNameCol = group_by === 'api_key'
+      ? 'COALESCE(ak.name, rl.api_key_id)'
+      : (allowedGroups[group_by || ''] || 'rl.model');
     const groupCol = allowedGroups[group_by || ''] || 'rl.model';
+    const needsApiKeyJoin = group_by === 'api_key';
 
     const conditions: string[] = ['rl.workspace_id = ?'];
     const params: any[] = [req.workspaceId];
@@ -201,9 +218,12 @@ logsRouter.get('/stats', async (req: AuthRequest, res) => {
     if (status)    { conditions.push('rl.status = ?'); params.push(Number(status)); }
 
     const whereClause = conditions.join(' AND ');
+    const fromClause = needsApiKeyJoin
+      ? 'FROM request_logs rl LEFT JOIN api_keys ak ON rl.api_key_id = ak.id'
+      : 'FROM request_logs rl';
 
     const [rows] = await pool.query<RowDataPacket[]>(
-      `SELECT ${groupCol} as name,
+      `SELECT ${selectNameCol} as name,
               COALESCE(SUM(rl.tokens_in), 0) as total_tokens_in,
               COALESCE(SUM(rl.tokens_out), 0) as total_tokens_out,
               COALESCE(SUM(rl.tokens_in + rl.tokens_out), 0) as total_tokens,
@@ -212,7 +232,7 @@ logsRouter.get('/stats', async (req: AuthRequest, res) => {
               COALESCE(SUM(CASE WHEN rl.status < 400 THEN 1 ELSE 0 END), 0) as success_count,
               COALESCE(SUM(CASE WHEN rl.status >= 400 THEN 1 ELSE 0 END), 0) as error_count,
               COALESCE(AVG(rl.latency_ms), 0) as avg_latency_ms
-       FROM request_logs rl
+       ${fromClause}
        WHERE ${whereClause}
        GROUP BY ${groupCol}
        ORDER BY total_cost_cents DESC`,

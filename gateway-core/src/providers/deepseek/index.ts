@@ -5,9 +5,12 @@ import {
   DeepSeekChatCompleteResponseTransform,
   DeepSeekChatCompleteStreamChunkTransform,
 } from './chatComplete';
+import { messagesBaseConfig } from '../anthropic-base/messages';
 
 const DeepSeekConfig: ProviderConfigs = {
   chatComplete: DeepSeekChatCompleteConfig,
+  messages: messagesBaseConfig,
+  messagesCountTokens: messagesBaseConfig,
   api: DeepSeekAPIConfig,
   responseTransforms: {
     chatComplete: DeepSeekChatCompleteResponseTransform,

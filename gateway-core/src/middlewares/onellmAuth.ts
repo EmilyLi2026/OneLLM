@@ -80,9 +80,11 @@ export async function onellmAuth(c: Context, next: Next) {
     apiKey = authHeader.slice(7);
   } else {
     // Try new header first, fallback to old (backward compat), then legacy Portkey
+    // Also support x-api-key for Anthropic-native clients (Claude Code, SDKs)
     apiKey = c.req.header('x-onellm-api-key')
           || c.req.header('x-aihub-api-key')
           || c.req.header('x-portkey-api-key')
+          || c.req.header('x-api-key')
           || '';
   }
 

@@ -9,6 +9,7 @@ import { createNodeWebSocket } from '@hono/node-ws';
 import { realTimeHandlerNode } from './handlers/realtimeHandlerNode';
 import { requestValidator } from './middlewares/requestValidator';
 import conf from '../conf.json';
+import { loadPricingData } from './services/pricingService';
 import {
   adminAuthLoginHandler,
   adminAuthMiddleware,
@@ -159,6 +160,9 @@ app.get(
   requestValidator,
   upgradeWebSocket(realTimeHandlerNode)
 );
+
+// Load model pricing data for accurate cost calculation
+loadPricingData();
 
 const server = serve({
   fetch: app.fetch,

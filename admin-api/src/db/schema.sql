@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS request_logs (
     api_key_id VARCHAR(36),
     tokens_in INT DEFAULT 0,
     tokens_out INT DEFAULT 0,
-    cost_cents INT DEFAULT 0,
+    cost_cents DECIMAL(10,4) DEFAULT 0.0000 COMMENT 'cost in US cents with fractional precision',
     latency_ms INT DEFAULT 0,
     status INT DEFAULT 200,
     error_message TEXT,

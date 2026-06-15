@@ -134,6 +134,23 @@ function extractAgentContext(c: Context): Record<string, string | number | null>
 }
 
 /**
+ * Extract plain text from message content, which may be:
+ *   - OpenAI format: string (e.g. "Hello")
+ *   - Anthropic format: array of content blocks (e.g. [{type:"text", text:"Hello"}])
+ */
+function extractTextContent(content: any): string {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .filter((block: any) => block.type === 'text' && block.text)
+      .map((block: any) => block.text)
+      .join('\n');
+  }
+  return '';
+}
+
+/**
  * Derive conversation labels from the request messages — no client cooperation needed.
  * Uses rule-based extraction to semantically distill key info from prompts.
  * Extracts: agent_role (role title), action_label (action intent),
@@ -146,20 +163,25 @@ function deriveLabelsFromMessages(requestOptionsArray: any[]): Record<string, an
   }
 
   // Find system prompt → agent's role/identity
+  // Anthropic: system is top-level, not in messages. Check top-level system field too.
   const systemMsg = messages.find((m: any) => m.role === 'system');
+  const systemContent = extractTextContent(systemMsg?.content)
+    || extractTextContent(requestOptionsArray[0]?.requestParams?.system)
+    || '';
+
   // Find user messages → current action
   const userMessages = messages.filter((m: any) => m.role === 'user');
   const lastUserMsg = userMessages[userMessages.length - 1];
 
   // Simple session fingerprint: hash the unique conversation identity
-  const sessionSource = systemMsg?.content || lastUserMsg?.content || '';
+  const sessionSource = systemContent || extractTextContent(lastUserMsg?.content) || '';
   const sessionId = sessionSource
     ? `sess_${simpleHash(sessionSource.substring(0, 200))}`
     : null;
 
   return {
-    agent_role: extractAgentRole(systemMsg?.content),
-    action_label: extractActionLabel(lastUserMsg?.content),
+    agent_role: extractAgentRole(systemContent),
+    action_label: extractActionLabel(extractTextContent(lastUserMsg?.content)),
     conversation_turn: userMessages.length || null,
     session_id: sessionId,
   };
@@ -304,8 +326,10 @@ async function processLog(c: Context, start: number) {
   const responseBody = requestOptionsArray[0]?.response;
   let tokensIn = 0, tokensOut = 0;
   if (responseBody?.usage) {
-    tokensIn = responseBody.usage.prompt_tokens || 0;
-    tokensOut = responseBody.usage.completion_tokens || 0;
+    // OpenAI format: prompt_tokens / completion_tokens
+    // Anthropic format: input_tokens / output_tokens
+    tokensIn = responseBody.usage.prompt_tokens || responseBody.usage.input_tokens || 0;
+    tokensOut = responseBody.usage.completion_tokens || responseBody.usage.output_tokens || 0;
   }
 
   // Calculate cost

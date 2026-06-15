@@ -159,7 +159,7 @@ export function PlaygroundPage() {
       if (!apiKey) { message.error('无法获取 Provider Key'); setLoading(false); return }
 
       const msgs = [...messages, um].map(m => ({ role: m.role, content: m.content }))
-      const gatewayUrl = 'http://localhost:9799/v1/chat/completions'
+      const gatewayUrl = '/gateway/v1/chat/completions'
 
       const res = await fetch(gatewayUrl, {
         method: 'POST',

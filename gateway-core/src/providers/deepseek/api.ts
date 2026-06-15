@@ -9,6 +9,10 @@ const DeepSeekAPIConfig: ProviderAPIConfig = {
     switch (fn) {
       case 'chatComplete':
         return '/v1/chat/completions';
+      case 'messages':
+        return '/anthropic/v1/messages';
+      case 'messagesCountTokens':
+        return '/anthropic/v1/messages/count_tokens';
       default:
         return '';
     }

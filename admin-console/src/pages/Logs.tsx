@@ -23,6 +23,7 @@ export function LogsPage() {
   const [loading, setLoading] = useState(true);
   const [trend, setTrend] = useState<any[]>([]);
   const [stats, setStats] = useState<any[]>([]);
+  const [apiKeyStats, setApiKeyStats] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({});
 
   // Filters
@@ -70,9 +71,10 @@ export function LogsPage() {
     setLoading(true);
     try {
       const params = buildParams();
-      const [trendRes, statsRes] = await Promise.all([
+      const [trendRes, statsRes, apiKeyStatsRes] = await Promise.all([
         api.get('/logs/trend', { params }),
         api.get('/logs/stats', { params: { ...params, group_by: 'model' } }),
+        api.get('/logs/stats', { params: { ...params, group_by: 'api_key' } }),
       ]);
       const trendData = (trendRes.data.data || []).map((d: any) => ({
         ...d,
@@ -80,8 +82,10 @@ export function LogsPage() {
         total_tokens: Number(d.total_tokens_in) + Number(d.total_tokens_out),
       }));
       const statsData = statsRes.data.data;
+      const apiKeyStatsData = apiKeyStatsRes.data.data;
       setTrend(trendData);
       setStats(statsData.breakdown || []);
+      setApiKeyStats(apiKeyStatsData.breakdown || []);
 
       const total = trendData.reduce((s: any, r: any) => ({
         tokens_in: s.tokens_in + Number(r.total_tokens_in),
@@ -170,15 +174,6 @@ export function LogsPage() {
             options={keyOptions.map(k => ({ value: k.id, label: `${k.name} (${k.key_prefix}...)` }))}
           />
           <Select
-            value={modelFilter || undefined}
-            onChange={setModelFilter}
-            placeholder="选择模型"
-            allowClear
-            size="small"
-            style={{ width: 160 }}
-            options={modelOptions.map(m => ({ value: m, label: m }))}
-          />
-          <Select
             value={providerFilter || undefined}
             onChange={setProviderFilter}
             placeholder="选择 Provider"
@@ -186,6 +181,15 @@ export function LogsPage() {
             size="small"
             style={{ width: 140 }}
             options={providerOptions.filter(p => p !== 'unknown').map(p => ({ value: p, label: p }))}
+          />
+          <Select
+            value={modelFilter || undefined}
+            onChange={setModelFilter}
+            placeholder="选择模型"
+            allowClear
+            size="small"
+            style={{ width: 160 }}
+            options={modelOptions.map(m => ({ value: m, label: m }))}
           />
           <Select
             value={agentFilter || undefined}
@@ -349,6 +353,57 @@ export function LogsPage() {
                 yField="cost"
                 label={{ position: 'top', content: (d: any) => `¥${d.cost.toFixed(2)}` }}
                 color="#1677ff"
+                animation={{ appear: { animation: 'wave-in' } }}
+                xAxis={{ label: { autoRotate: true } }}
+              />
+            ) : (
+              <Typography.Text type="secondary">暂无数据</Typography.Text>
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* API Key breakdown */}
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={12}>
+          <Card title="🔑 API Key 用量构成" size="small" style={{ height: 420 }}>
+            {(() => {
+              const pieData = apiKeyStats
+                .filter((s: any) => Number(s.total_tokens) > 0)
+                .map((s: any) => ({
+                  type: s.name || 'unknown',
+                  value: Number(s.total_tokens) || 0,
+                }));
+              if (pieData.length === 0) return <Typography.Text type="secondary">暂无数据</Typography.Text>;
+              return (
+                <Pie
+                  height={300}
+                  data={pieData}
+                  angleField="value"
+                  colorField="type"
+                  radius={0.8}
+                  innerRadius={0.6}
+                  label={{ text: 'type', position: 'outside' }}
+                  legend={{ color: { position: 'bottom' } }}
+                  autoFit
+                />
+              );
+            })()}
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card title="💵 API Key 花费对比" size="small" style={{ height: 420 }}>
+            {apiKeyStats.length > 0 ? (
+              <Column
+                height={300}
+                data={apiKeyStats.map((s: any) => ({
+                  key: s.name || 'unknown',
+                  cost: Number(s.total_cost_cents) / 100,
+                }))}
+                xField="key"
+                yField="cost"
+                label={{ position: 'top', content: (d: any) => `¥${d.cost.toFixed(2)}` }}
+                color="#fa8c16"
                 animation={{ appear: { animation: 'wave-in' } }}
                 xAxis={{ label: { autoRotate: true } }}
               />

@@ -114,9 +114,6 @@ if (getRuntimeKey() === 'node') {
   app.use(logHandler());
 }
 
-// Support the /v1/models endpoint
-app.get('/v1/models', modelsHandler);
-
 // Use hooks middleware for all routes
 app.use('*', hooks);
 
@@ -126,6 +123,11 @@ if (conf.cache === true) {
 
 // OneLLM auth middleware (validates API keys)
 app.use('*', onellmAuth);
+
+// Support the /v1/models endpoint
+// MUST be registered AFTER onellmAuth middleware so that
+// virtual key bindings are available in the request context.
+app.get('/v1/models', modelsHandler);
 
 /**
  * Default route when no other route matches.

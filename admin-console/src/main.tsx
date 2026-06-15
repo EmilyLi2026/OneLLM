@@ -9,7 +9,7 @@ import './index.css';
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ConfigProvider locale={zhCN} theme={{ token: { colorPrimary: '#1677ff' } }}>
-      <BrowserRouter>
+      <BrowserRouter basename="/admin">
         <App />
       </BrowserRouter>
     </ConfigProvider>

@@ -193,10 +193,14 @@ export function LogsDetailPage() {
       render: (v: string) => v ? dayjs(v).format('MM-DD HH:mm:ss') : '-',
       sorter: true,
       sortOrder: getSortOrder('created_at') },
-    { title: '模型', dataIndex: 'model', key: 'model', width: 140,
-      render: (v: string) => <Tag>{v}</Tag> },
+    { title: 'API Key', dataIndex: 'api_key_name', key: 'api_key_name', width: 140,
+      render: (v: string, record: any) => v
+        ? <Tooltip title={`${v} (${record.api_key_prefix || ''}…)`}><Tag color="green">{v.length > 16 ? v.substring(0, 16) + '…' : v}</Tag></Tooltip>
+        : (record.api_key_id ? <Tag color="default">{record.api_key_id.substring(0, 14)}…</Tag> : '-') },
     { title: 'Provider', dataIndex: 'provider', key: 'provider', width: 100,
       render: (v: string) => <Tag color={v === 'unknown' ? 'default' : 'blue'}>{v}</Tag> },
+    { title: '模型', dataIndex: 'model', key: 'model', width: 140,
+      render: (v: string) => <Tag>{v}</Tag> },
     { title: '智能体角色', dataIndex: 'agent_role', key: 'agent_role', width: 140,
       render: (v: string) => v
         ? <Tooltip title={v}><Tag color="geekblue">{v.length > 18 ? v.substring(0, 18) + '…' : v}</Tag></Tooltip>
@@ -311,15 +315,6 @@ export function LogsDetailPage() {
             options={keyOptions.map(k => ({ value: k.id, label: `${k.name} (${k.key_prefix}...)` }))}
           />
           <Select
-            value={modelFilter || undefined}
-            onChange={setModelFilter}
-            placeholder="选择模型"
-            allowClear
-            size="small"
-            style={{ width: 160 }}
-            options={modelOptions.map(m => ({ value: m, label: m }))}
-          />
-          <Select
             value={providerFilter || undefined}
             onChange={setProviderFilter}
             placeholder="选择 Provider"
@@ -327,6 +322,15 @@ export function LogsDetailPage() {
             size="small"
             style={{ width: 140 }}
             options={providerOptions.filter(p => p !== 'unknown').map(p => ({ value: p, label: p }))}
+          />
+          <Select
+            value={modelFilter || undefined}
+            onChange={setModelFilter}
+            placeholder="选择模型"
+            allowClear
+            size="small"
+            style={{ width: 160 }}
+            options={modelOptions.map(m => ({ value: m, label: m }))}
           />
           <Select
             value={agentFilter || undefined}

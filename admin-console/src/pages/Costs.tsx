@@ -4,6 +4,7 @@ import {
   DollarOutlined, ThunderboltOutlined, CalendarOutlined,
   ApiOutlined, BarChartOutlined, PieChartOutlined,
   SearchOutlined, ReloadOutlined, RiseOutlined, FallOutlined,
+  KeyOutlined,
 } from '@ant-design/icons';
 import { Line, Pie, Column } from '@ant-design/charts';
 import { api } from '../api/client';
@@ -21,10 +22,12 @@ export function CostsPage() {
   const [loading, setLoading] = useState(true);
   const [trend, setTrend] = useState<any[]>([]);
   const [breakdown, setBreakdown] = useState<any[]>([]);
+  const [apiKeyBreakdown, setApiKeyBreakdown] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({});
 
   // Filters
   const [dateRange, setDateRange] = useState<[any, any] | null>([dayjs().startOf('month'), dayjs()]);
+  const [apiKeyFilter, setApiKeyFilter] = useState<string>('');
   const [modelFilter, setModelFilter] = useState<string>('');
   const [providerFilter, setProviderFilter] = useState<string>('');
   const [agentFilter, setAgentFilter] = useState<string>('');
@@ -34,6 +37,7 @@ export function CostsPage() {
   const [modelOptions, setModelOptions] = useState<string[]>([]);
   const [providerOptions, setProviderOptions] = useState<string[]>([]);
   const [agentOptions, setAgentOptions] = useState<{ id: string; name: string }[]>([]);
+  const [keyOptions, setKeyOptions] = useState<{ id: string; name: string; key_prefix: string }[]>([]);
 
   // Load dropdowns
   useEffect(() => {
@@ -44,25 +48,30 @@ export function CostsPage() {
     api.get('/agents').then(({ data }: any) => {
       setAgentOptions((data.data || []).map((a: any) => ({ id: a.id, name: a.name })));
     }).catch(() => {});
+    api.get('/keys').then(({ data }: any) => {
+      setKeyOptions((data.data || []).map((k: any) => ({ id: k.id, name: k.name, key_prefix: k.key_prefix })));
+    }).catch(() => {});
   }, []);
 
   const buildParams = useCallback(() => {
     const params: Record<string, any> = {};
     if (dateRange?.[0]) params.date_from = dateRange[0].format('YYYY-MM-DD');
     if (dateRange?.[1]) params.date_to = dateRange[1].format('YYYY-MM-DD 23:59:59');
+    if (apiKeyFilter) params.api_key_id = apiKeyFilter;
     if (modelFilter) params.model = modelFilter;
     if (providerFilter) params.provider = providerFilter;
     if (agentFilter) params.agent_id = agentFilter;
     return params;
-  }, [dateRange, modelFilter, providerFilter, agentFilter]);
+  }, [dateRange, apiKeyFilter, modelFilter, providerFilter, agentFilter]);
 
   const doFetch = useCallback(async () => {
     setLoading(true);
     try {
       const params = buildParams();
-      const [trendRes, statsRes] = await Promise.all([
+      const [trendRes, statsRes, apiKeyRes] = await Promise.all([
         api.get('/logs/trend', { params }),
         api.get('/logs/stats', { params: { ...params, group_by: groupBy } }),
+        api.get('/logs/stats', { params: { ...params, group_by: 'api_key' } }),
       ]);
 
       // Trend data
@@ -87,6 +96,14 @@ export function CostsPage() {
           ? Number(b.total_cost_cents) / 100 / (Number(b.total_tokens) / 1000) : 0,
       }));
       setBreakdown(bd);
+
+      // API Key breakdown
+      const akBd = (apiKeyRes.data.data?.breakdown || []).map((b: any) => ({
+        ...b,
+        cost_yuan: Number(b.total_cost_cents) / 100,
+        tokens: Number(b.total_tokens_in) + Number(b.total_tokens_out),
+      }));
+      setApiKeyBreakdown(akBd);
 
       // Summary
       const total = trendData.reduce((s: any, r: any) => ({
@@ -114,6 +131,7 @@ export function CostsPage() {
 
   const handleReset = () => {
     setDateRange([dayjs().startOf('month'), dayjs()]);
+    setApiKeyFilter('');
     setModelFilter('');
     setProviderFilter('');
     setAgentFilter('');
@@ -149,6 +167,14 @@ export function CostsPage() {
             placeholder={['开始日期', '结束日期']}
             size="small"
             style={{ width: 250 }}
+          />
+          <Select
+            value={apiKeyFilter || undefined}
+            onChange={setApiKeyFilter}
+            placeholder="选择 API Key"
+            allowClear size="small"
+            style={{ width: 200 }}
+            options={keyOptions.map(k => ({ value: k.id, label: `${k.name} (${k.key_prefix}...)` }))}
           />
           <Select
             value={modelFilter || undefined}
@@ -229,9 +255,9 @@ export function CostsPage() {
         </Col>
       </Row>
 
-      {/* Charts Row 1: Daily cost trend + Cost pie by dimension */}
+      {/* Charts Row 1: Daily cost trend — full width */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={14}>
+        <Col span={24}>
           <Card title="📈 每日花费趋势" size="small" style={{ height: 380 }}>
             {trend.length > 0 ? (
               <Line
@@ -258,12 +284,54 @@ export function CostsPage() {
             )}
           </Card>
         </Col>
-        <Col span={10}>
-          <Card title={`🥧 花费占比 (${GROUP_OPTIONS.find(g => g.value === groupBy)?.label})`} size="small" style={{ height: 380 }}>
+      </Row>
+
+      {/* Charts Row 2: Cost pie by dimension + Cost pie by API Key */}
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={12}>
+          <Card title={`🥧 花费占比 (${GROUP_OPTIONS.find(g => g.value === groupBy)?.label})`} size="small" style={{ height: 420 }}>
             {breakdown.filter((b: any) => b.cost_yuan > 0).length > 0 ? (
               <Pie
                 height={300}
                 data={breakdown
+                  .filter((b: any) => b.cost_yuan > 0)
+                  .map((b: any) => ({ type: b.name || 'unknown', value: Math.round(b.cost_yuan * 10000) / 10000 }))}
+                angleField="value"
+                colorField="type"
+                radius={0.8}
+                innerRadius={0.55}
+                label={{
+                  text: 'type',
+                  position: 'outside',
+                  style: { fontSize: 11 },
+                }}
+                legend={{ color: { position: 'bottom', layout: { justifyContent: 'center' } } }}
+                statistic={{
+                  title: false,
+                  content: {
+                    style: { fontSize: 14 },
+                    customHtml: (_: any, _v: any, data: any[]) => {
+                      const total = data.reduce((s, d) => s + d.value, 0);
+                      return `<div style="text-align:center"><div style="font-size:20px;font-weight:bold">¥${total.toFixed(2)}</div><div style="font-size:11px;color:#999">总计</div></div>`;
+                    },
+                  },
+                }}
+                tooltip={{ items: [{ channel: 'y', valueFormatter: (v: number) => `¥${v.toFixed(2)}` }] }}
+                autoFit
+              />
+            ) : (
+              <Typography.Text type="secondary" style={{ display: 'block', textAlign: 'center', paddingTop: 120 }}>
+                暂无数据
+              </Typography.Text>
+            )}
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card title="🔑 API Key 花费构成" size="small" style={{ height: 420 }}>
+            {apiKeyBreakdown.filter((b: any) => b.cost_yuan > 0).length > 0 ? (
+              <Pie
+                height={300}
+                data={apiKeyBreakdown
                   .filter((b: any) => b.cost_yuan > 0)
                   .map((b: any) => ({ type: b.name || 'unknown', value: Math.round(b.cost_yuan * 10000) / 10000 }))}
                 angleField="value"

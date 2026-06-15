@@ -300,6 +300,45 @@ internalRouter.post('/get-binding-key', async (req, res) => {
 });
 
 /**
+ * GET /api/v1/internal/models-by-provider
+ * Returns active model IDs for a given provider slug.
+ * Used by gateway to construct /v1/models response when bindings have no allowed_models set.
+ */
+internalRouter.get('/models-by-provider', async (req, res) => {
+  try {
+    const provider = req.query.provider as string;
+    if (!provider) return res.status(400).json({ status: 'error', message: 'provider query param required' });
+
+    // Catalog slug → gateway adapter mapping
+    const CATALOG_TO_GATEWAY: Record<string, string> = {
+      'alibaba': 'dashscope',
+    };
+    const gatewaySlug = CATALOG_TO_GATEWAY[provider] || provider;
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT ms.model_id, ms.name, ms.context_window, ms.max_output_tokens,
+              ms.pricing_input_cents, ms.pricing_output_cents
+       FROM model_specs ms
+       JOIN model_providers mp ON ms.provider_id = mp.id
+       WHERE mp.slug = ? AND ms.status = 'active'`,
+      [gatewaySlug]
+    );
+
+    return res.json({
+      status: 'success',
+      data: rows.map((r: any) => ({
+        id: r.model_id,
+        name: r.name,
+        context_window: r.context_window,
+        max_output_tokens: r.max_output_tokens,
+      })),
+    });
+  } catch (error: any) {
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+/**
  * GET /api/v1/internal/resolve-model
  * Resolve a model name to its provider(s), used by gateway routing.
  * Looks up model_specs table first, then falls back to prefix rules.

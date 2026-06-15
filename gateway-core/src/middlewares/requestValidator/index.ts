@@ -210,6 +210,16 @@ export const requestValidator = async (c: Context, next: any) => {
     );
   }
 
+  // ── Auto-detect provider for native Anthropic /v1/messages endpoint ──
+  // Claude Code and other Anthropic-native clients send requests to /v1/messages
+  // without the x-onellm-provider header. Auto-infer anthropic for this endpoint.
+  const path = c.req.path;
+  if (path.startsWith('/v1/messages') && !requestHeaders[`x-${POWERED_BY}-provider`] && !requestHeaders[`x-${POWERED_BY}-config`]) {
+    requestHeaders[`x-${POWERED_BY}-provider`] = 'anthropic';
+    // Also store in context for downstream handlers (they re-read raw headers)
+    c.set('onellm_auto_provider', 'anthropic');
+  }
+
   // Support x-onellm-provider, x-aihub-provider (old), and x-portkey-provider (legacy)
   const providerHeader = requestHeaders[`x-${POWERED_BY}-provider`] || requestHeaders['x-aihub-provider'] || requestHeaders['x-portkey-provider'];
   const configHeader = requestHeaders[`x-${POWERED_BY}-config`] || requestHeaders['x-aihub-config'] || requestHeaders['x-portkey-config'];
