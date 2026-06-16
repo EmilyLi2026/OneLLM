@@ -4,7 +4,7 @@
     <strong>One API, Every Model. Under Control.</strong>
   </p>
   <p align="center">
-    One entry point for 15+ Chinese LLM providers | Ship fast, stay in control
+    ai-gateway  lm-gateway agent-control openai-compatible
   </p>
 </p>
 
