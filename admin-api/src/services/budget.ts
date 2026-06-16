@@ -8,6 +8,8 @@
  *   🔴 cutoff   (>=100%):  notification + hard block (402)
  */
 
+import { centsToYuanNum } from '../utils/currency';
+
 import pool from '../db/pool';
 import { RowDataPacket } from 'mysql2';
 
@@ -499,7 +501,7 @@ export async function getBudgetAnalytics(workspaceId: string): Promise<BudgetAna
   );
   const totalKeyCost = keyBreakdown.reduce((s: number, r: any) => s + Number(r.cost_cents), 0);
   const breakdown_by_key = keyBreakdown.map((r: any) => ({
-    name: r.name, cost_yuan: Number(r.cost_cents) / 100,
+    name: r.name, cost_yuan: centsToYuanNum(r.cost_cents),
     percent: totalKeyCost > 0 ? Math.round(Number(r.cost_cents) / totalKeyCost * 100) : 0,
   }));
 
@@ -512,7 +514,7 @@ export async function getBudgetAnalytics(workspaceId: string): Promise<BudgetAna
   );
   const totalModelCost = modelBreakdown.reduce((s: number, r: any) => s + Number(r.cost_cents), 0);
   const breakdown_by_model = modelBreakdown.map((r: any) => ({
-    name: r.name, cost_yuan: Number(r.cost_cents) / 100,
+    name: r.name, cost_yuan: centsToYuanNum(r.cost_cents),
     percent: totalModelCost > 0 ? Math.round(Number(r.cost_cents) / totalModelCost * 100) : 0,
   }));
 
@@ -523,10 +525,10 @@ export async function getBudgetAnalytics(workspaceId: string): Promise<BudgetAna
      WHERE workspace_id = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
      GROUP BY DATE(created_at) ORDER BY date ASC`, [workspaceId]
   );
-  const dailyBudgetYuan = dailyBudget > 0 ? dailyBudget / 100 : null;
+  const dailyBudgetYuan = dailyBudget > 0 ? centsToYuanNum(dailyBudget) : null;
   const daily_trend = dailyTrend.map((r: any) => ({
     date: r.date,
-    cost_yuan: Number(r.cost_cents) / 100,
+    cost_yuan: centsToYuanNum(r.cost_cents),
     budget_line: dailyBudgetYuan,
   }));
 

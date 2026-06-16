@@ -4,6 +4,7 @@ import { Input, Button, Select, Card, Typography, Space, Tag, Spin, Divider, mes
 import { SendOutlined, RobotOutlined, UserOutlined, ThunderboltOutlined, ClearOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
 import { api } from '../api/client'
+import { formatCost } from '../utils/format';
 
 interface ChatMsg {
   id: string; role: 'user' | 'assistant'
@@ -313,8 +314,8 @@ export function PlaygroundPage() {
                 上下文: {selectedModelInfo.context_window ? `${(selectedModelInfo.context_window / 1000).toFixed(0)}K` : 'N/A'}
               </Typography.Text>
               <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                价格: ¥{(selectedModelInfo.pricing_input_cents / 100).toFixed(2)} in
-                / ¥{(selectedModelInfo.pricing_output_cents / 100).toFixed(2)} out / 1M tokens
+                价格: {formatCost(selectedModelInfo.pricing_input_cents)} in
+                / {formatCost(selectedModelInfo.pricing_output_cents)} out / 1M tokens
               </Typography.Text>
             </Space>
           </Card>

@@ -8,6 +8,7 @@ import pool, { genId } from '../db/pool';
 import { AuthRequest } from '../middleware/auth';
 import { requireWrite } from '../middleware/rbac';
 import { recordAudit } from '../services/audit';
+import { centsToYuan } from '../utils/currency';
 import { RowDataPacket } from 'mysql2';
 
 export const agentsRouter = Router();
@@ -107,7 +108,7 @@ agentsRouter.get('/:id/cost', async (req: AuthRequest, res) => {
         summary: {
           total_tokens: Number(total_tokens),
           total_cost_cents: Number(total_cost),
-          total_cost_yuan: (Number(total_cost) / 100).toFixed(2),
+          total_cost_yuan: centsToYuan(total_cost),
         },
         period: req.query.period || 'all',
       },

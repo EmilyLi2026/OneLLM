@@ -8,6 +8,7 @@ import {
   EyeOutlined, FilterOutlined, CloudDownloadOutlined, GlobalOutlined,
 } from '@ant-design/icons';
 import { modelsAPI } from '../api/client';
+import { formatCost } from '../utils/format';
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
   active: { color: 'green', label: '可用' },
@@ -262,12 +263,12 @@ export function ModelsPage() {
     {
       title: '输入价格', key: 'p_in', width: 80,
       render: (_: any, r: any) => r.pricing?.input_cents > 0
-        ? `¥${(r.pricing.input_cents / 100).toFixed(2)}/M` : '-',
+        ? `${formatCost(r.pricing.input_cents)}/M` : '-',
     },
     {
       title: '输出价格', key: 'p_out', width: 80,
       render: (_: any, r: any) => r.pricing?.output_cents > 0
-        ? `¥${(r.pricing.output_cents / 100).toFixed(2)}/M` : '-',
+        ? `${formatCost(r.pricing.output_cents)}/M` : '-',
     },
     {
       title: '能力', key: 'caps', width: 100,
@@ -440,10 +441,10 @@ export function ModelsPage() {
               {detailModel.max_output_tokens?.toLocaleString() || '-'}
             </Descriptions.Item>
             <Descriptions.Item label="输入价格">
-              ¥{(detailModel.pricing?.input_cents / 100).toFixed(2)}/1M tokens
+              {formatCost(detailModel.pricing?.input_cents)}/1M tokens
             </Descriptions.Item>
             <Descriptions.Item label="输出价格">
-              ¥{(detailModel.pricing?.output_cents / 100).toFixed(2)}/1M tokens
+              {formatCost(detailModel.pricing?.output_cents)}/1M tokens
             </Descriptions.Item>
             <Descriptions.Item label="状态">
               <Tag color={STATUS_MAP[detailModel.status]?.color}>

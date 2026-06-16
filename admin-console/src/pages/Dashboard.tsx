@@ -9,9 +9,9 @@ import {
 } from '@ant-design/icons';
 import { Line, Column, Pie } from '@ant-design/charts';
 import { api } from '../api/client';
+import { formatCost, centsToYuanNum } from '../utils/format';
 
 // ── Helpers ──
-const yuan = (cents: number) => (cents / 100).toFixed(2);
 const pct = (v: number, total: number) => total > 0 ? Math.round(v / total * 100) : 0;
 const budgetLevel = (spent: number, budget: number) => {
   if (!budget || budget === 0) return null;
@@ -73,7 +73,7 @@ export function DashboardPage() {
   // Trend data
   const trendData = (trend || []).map((d: any) => ({
     date: d.date,
-    cost: Number(d.total_cost_cents) / 100,
+    cost: centsToYuanNum(Number(d.total_cost_cents)),
     tokens: Number(d.total_tokens_in) + Number(d.total_tokens_out),
     requests: Number(d.total_requests),
   }));
@@ -151,7 +151,7 @@ export function DashboardPage() {
           { title: 'API Keys', value: keys.length, icon: <KeyOutlined />, color: '#52c41a', path: '/keys' },
           { title: '模型总数', value: modelCount, icon: <AppstoreOutlined />, color: '#722ed1', path: '/models' },
           { title: 'Provider 已接入', value: providers.length, icon: <CloudServerOutlined />, color: '#13c2c2', path: '/providers' },
-          { title: '本月花费', value: `¥${yuan(ws.monthly_spent_cents || 0)}`, icon: <DollarOutlined />, color: '#cf1322', path: '/costs', suffix: '' },
+          { title: '本月花费', value: formatCost(ws.monthly_spent_cents || 0), color: '#cf1322', path: '/costs', suffix: '' },
           { title: '今日请求', value: trendData[trendData.length - 1]?.requests || 0, icon: <ApiOutlined />, color: '#fa8c16', path: '/logs', suffix: '', format: (v: any) => typeof v === 'number' ? v.toLocaleString() : v },
         ].map((m, i) => (
           <Col span={4} key={i}>
@@ -183,7 +183,7 @@ export function DashboardPage() {
                       strokeColor={budgetLevel(ws.monthly_spent_cents, ws.monthly_budget_cents)?.color}
                       status={budgetLevel(ws.monthly_spent_cents, ws.monthly_budget_cents)?.status} />
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      ¥{yuan(ws.monthly_spent_cents)} / ¥{yuan(ws.monthly_budget_cents)}
+                      {formatCost(ws.monthly_spent_cents)} / {formatCost(ws.monthly_budget_cents)}
                       {ws.forecast_days_remaining != null && (
                         <span> · 预计 {ws.forecast_days_remaining} 天后耗尽</span>
                       )}
@@ -198,7 +198,7 @@ export function DashboardPage() {
                       strokeColor={budgetLevel(ws.daily_spent_cents, ws.daily_budget_cents)?.color}
                       status={budgetLevel(ws.daily_spent_cents, ws.daily_budget_cents)?.status} />
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      ¥{yuan(ws.daily_spent_cents)} / ¥{yuan(ws.daily_budget_cents)}
+                      {formatCost(ws.daily_spent_cents)} / {formatCost(ws.daily_budget_cents)}
                     </Typography.Text>
                   </Col>
                 )}

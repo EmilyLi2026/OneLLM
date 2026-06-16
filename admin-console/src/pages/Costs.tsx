@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons';
 import { Line, Pie, Column } from '@ant-design/charts';
 import { api } from '../api/client';
+import { formatCost, centsToYuanNum } from '../utils/format';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -77,30 +78,30 @@ export function CostsPage() {
       // Trend data
       const trendData = (trendRes.data.data || []).map((d: any) => ({
         date: d.date,
-        cost: Number(d.total_cost_cents) / 100,
+        cost: centsToYuanNum(Number(d.total_cost_cents)),
         tokens: Number(d.total_tokens_in) + Number(d.total_tokens_out),
         requests: Number(d.total_requests),
         avg_cost_per_req: Number(d.total_requests) > 0
-          ? Number(d.total_cost_cents) / 100 / Number(d.total_requests) : 0,
+          ? centsToYuanNum(Number(d.total_cost_cents)) / Number(d.total_requests) : 0,
       }));
       setTrend(trendData);
 
       // Breakdown
       const bd = (statsRes.data.data?.breakdown || []).map((b: any) => ({
         ...b,
-        cost_yuan: Number(b.total_cost_cents) / 100,
+        cost_yuan: centsToYuanNum(b.total_cost_cents),
         tokens: Number(b.total_tokens_in) + Number(b.total_tokens_out),
         avg_cost_per_req: Number(b.total_requests) > 0
-          ? Number(b.total_cost_cents) / 100 / Number(b.total_requests) : 0,
+          ? centsToYuanNum(Number(b.total_cost_cents)) / Number(b.total_requests) : 0,
         avg_cost_per_1k_tokens: Number(b.total_tokens) > 0
-          ? Number(b.total_cost_cents) / 100 / (Number(b.total_tokens) / 1000) : 0,
+          ? centsToYuanNum(Number(b.total_cost_cents)) / (Number(b.total_tokens) / 1000) : 0,
       }));
       setBreakdown(bd);
 
       // API Key breakdown
       const akBd = (apiKeyRes.data.data?.breakdown || []).map((b: any) => ({
         ...b,
-        cost_yuan: Number(b.total_cost_cents) / 100,
+        cost_yuan: centsToYuanNum(b.total_cost_cents),
         tokens: Number(b.total_tokens_in) + Number(b.total_tokens_out),
       }));
       setApiKeyBreakdown(akBd);
@@ -210,7 +211,7 @@ export function CostsPage() {
         <Col span={4}>
           <Card size="small">
             <Statistic title="总花费" value={`¥${summary.total_cost?.toFixed(2)}`}
-              prefix={<DollarOutlined />}
+              prefix="¥"
               valueStyle={{ fontSize: 22, color: '#cf1322' }}
               suffix={
                 trend.length >= 2 ? (

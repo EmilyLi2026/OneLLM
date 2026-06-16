@@ -1,8 +1,11 @@
 /**
  * Pricing Service
  *
- * Loads model pricing data from AI Hub's models dataset
- * and provides real-time cost calculation for each API call.
+ * Loads model pricing data from the pricing/ directory (OpenRouter USD prices)
+ * and calculates cost in RMB fen (分).
+ *
+ * All pricing JSON files use USD per token.
+ * calculateCost() converts: USD/token × tokens × 100 × exchange_rate → RMB fen
  */
 
 import fs from 'fs';
@@ -23,14 +26,27 @@ interface ProviderPricing {
 // In-memory pricing cache
 const pricingCache: Map<string, ProviderPricing> = new Map();
 
-/**
- * Load pricing data from the pricing/ directory.
- * Called once at startup.
- */
+const DEFAULT_USD_CNY_RATE = 7.25;
+
+/** Get USD→CNY exchange rate from environment, fallback to default */
+function getExchangeRate(): number {
+  const raw = process.env.USD_CNY_RATE;
+  if (!raw) return DEFAULT_USD_CNY_RATE;
+  const rate = parseFloat(raw);
+  if (isNaN(rate) || rate <= 0) return DEFAULT_USD_CNY_RATE;
+  return rate;
+}
+
+/** Load pricing data from the pricing/ directory. Called once at startup. */
 export function loadPricingData(): void {
   try {
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const pricingDir = path.resolve(__dirname, '../../pricing');
+    // Try CWD first (works in dev & prod when started from gateway-core/)
+    // Fall back to source-relative path (when CWD differs)
+    let pricingDir = path.resolve(process.cwd(), 'pricing');
+    if (!fs.existsSync(pricingDir)) {
+      const __dirname = path.dirname(fileURLToPath(import.meta.url));
+      pricingDir = path.resolve(__dirname, '../../pricing');
+    }
 
     if (!fs.existsSync(pricingDir)) {
       console.warn('Pricing directory not found:', pricingDir);
@@ -70,13 +86,15 @@ export function loadPricingData(): void {
 }
 
 /**
- * Calculate cost for a model call.
+ * Calculate cost for a model call in RMB fen (人民币分).
  *
- * @param provider - Provider name (openai, anthropic, deepseek, etc.)
- * @param model - Model name (gpt-4o, claude-sonnet-4-6, etc.)
+ * Pricing JSON uses USD per token; result is converted via USD_CNY_RATE.
+ *
+ * @param provider - Provider name
+ * @param model - Model name
  * @param tokensIn - Input/prompt tokens
  * @param tokensOut - Output/completion tokens
- * @returns Cost in cents (USD)
+ * @returns Cost in RMB fen (人民币分, fractional)
  */
 export function calculateCost(
   provider: string,
@@ -118,16 +136,17 @@ export function calculateCost(
     const outputPrice = payg.response_token?.price || inputPrice * 3;
     const inputCost = inputPrice * tokensIn;
     const outputCost = outputPrice * tokensOut;
-    // Convert dollars to cents (keep decimal precision, don't round)
-    return (inputCost + outputCost) * 100;
+    // Convert: USD dollars → RMB fen (× 100 × exchange_rate)
+    const rate = getExchangeRate();
+    return (inputCost + outputCost) * 100 * rate;
   }
 
   // ── Simple pricing format: input_cost_per_token / output_cost_per_token ──
   if (pricing?.input_cost_per_token) {
     const inputCost = pricing.input_cost_per_token * tokensIn;
     const outputCost = (pricing.output_cost_per_token || pricing.input_cost_per_token * 3) * tokensOut;
-    // Convert dollars to cents (keep decimal precision)
-    return (inputCost + outputCost) * 100;
+    const rate = getExchangeRate();
+    return (inputCost + outputCost) * 100 * rate;
   }
 
   return estimateCost(model, tokensIn, tokensOut);
@@ -145,8 +164,8 @@ function estimateCost(model: string, tokensIn: number, tokensOut: number): numbe
 
   // Check specific providers first (before generic keywords like 'flash')
   if (modelLower.includes('deepseek')) {
-    if (modelLower.includes('reasoner')) {
-      inputPricePerM = 0.55; outputPricePerM = 2.19;  // DeepSeek-R1
+    if (modelLower.includes('reasoner') || modelLower.includes('v4-pro')) {
+      inputPricePerM = 0.55; outputPricePerM = 2.19;  // DeepSeek-R1 / V4 Pro
     } else if (modelLower.includes('coder')) {
       inputPricePerM = 0.14; outputPricePerM = 0.28;  // DeepSeek-Coder
     } else {
@@ -164,8 +183,8 @@ function estimateCost(model: string, tokensIn: number, tokensOut: number): numbe
 
   const inputCost = (tokensIn / 1_000_000) * inputPricePerM;
   const outputCost = (tokensOut / 1_000_000) * outputPricePerM;
-  // Return fractional cents (stored as DECIMAL in DB)
-  return (inputCost + outputCost) * 100;
+  // Convert: USD dollars → RMB fen
+  return (inputCost + outputCost) * 100 * getExchangeRate();
 }
 
 function normalizeProviderName(name: string): string {

@@ -4,12 +4,13 @@ import {
   Table, InputNumber, Tag, Space, Progress, Alert, Tooltip, Modal,
 } from 'antd';
 import {
-  DollarOutlined, ThunderboltOutlined, WarningOutlined,
+  ThunderboltOutlined, WarningOutlined,
   SettingOutlined, DashboardOutlined, AlertOutlined,
   ReloadOutlined, RiseOutlined, FallOutlined, AimOutlined,
 } from '@ant-design/icons';
 import { Line, Pie } from '@ant-design/charts';
 import { api } from '../api/client';
+import { formatCost, centsToYuanNum, yuanToCents } from '../utils/format';
 
 type BudgetLevel = 'normal' | 'warning' | 'throttle' | 'cutoff';
 const LEVEL_CONFIG: Record<BudgetLevel, { color: string; label: string }> = {
@@ -50,8 +51,8 @@ export function BudgetPage() {
     setSaving(s => ({ ...s, workspace: true }));
     try {
       const body: any = {};
-      if (values.monthly !== undefined) body.monthly_budget_cents = Math.round(values.monthly * 100);
-      if (values.daily !== undefined) body.daily_budget_cents = Math.round(values.daily * 100);
+      if (values.monthly !== undefined) body.monthly_budget_cents = yuanToCents(values.monthly);
+      if (values.daily !== undefined) body.daily_budget_cents = yuanToCents(values.daily);
       await api.put('/budget/settings/workspace', body);
       message.success('Workspace 预算已更新');
       fetchAll();
@@ -63,8 +64,8 @@ export function BudgetPage() {
     setSaving(s => ({ ...s, [keyId]: true }));
     try {
       const body: any = {};
-      if (values.monthly !== undefined) body.monthly_budget_cents = Math.round(values.monthly * 100);
-      if (values.daily !== undefined) body.daily_budget_cents = Math.round(values.daily * 100);
+      if (values.monthly !== undefined) body.monthly_budget_cents = yuanToCents(values.monthly);
+      if (values.daily !== undefined) body.daily_budget_cents = yuanToCents(values.daily);
       await api.put(`/budget/settings/keys/${keyId}`, body);
       message.success('Key 预算已更新');
       fetchAll();
@@ -76,8 +77,8 @@ export function BudgetPage() {
     setSaving(s => ({ ...s, [bindingId]: true }));
     try {
       const body: any = {};
-      if (values.monthly !== undefined) body.monthly_budget_cents = Math.round(values.monthly * 100);
-      if (values.daily !== undefined) body.daily_budget_cents = Math.round(values.daily * 100);
+      if (values.monthly !== undefined) body.monthly_budget_cents = yuanToCents(values.monthly);
+      if (values.daily !== undefined) body.daily_budget_cents = yuanToCents(values.daily);
       await api.put(`/budget/settings/bindings/${bindingId}`, body);
       message.success('Binding 预算已更新');
       fetchAll();
@@ -90,7 +91,7 @@ export function BudgetPage() {
     try {
       const body: any = {};
       if (values.daily_tokens !== undefined) body.daily_token_limit = values.daily_tokens;
-      if (values.monthly_cost !== undefined) body.monthly_cost_limit_cents = Math.round(values.monthly_cost * 100);
+      if (values.monthly_cost !== undefined) body.monthly_cost_limit_cents = yuanToCents(values.monthly_cost);
       await api.put(`/budget/settings/agents/${agentId}`, body);
       message.success('Agent 预算已更新');
       fetchAll();
@@ -112,8 +113,6 @@ export function BudgetPage() {
     <Tag color={LEVEL_CONFIG[level].color}>{LEVEL_CONFIG[level].label}</Tag>
   );
 
-  const yuan = (cents: number) => (cents / 100).toFixed(2);
-
   if (loading) return <Spin size="large" style={{ display: 'block', margin: '100px auto' }} />;
 
   const ws = analytics?.workspace || {};
@@ -125,13 +124,13 @@ export function BudgetPage() {
       <Card title={<><SettingOutlined /> Workspace 预算设置</>} style={{ marginBottom: 16 }}>
         <Row gutter={24}>
           <Col span={8}>
-            <Statistic title="月预算 (元)" value={settings?.workspace?.monthly_budget_cents / 100}
-              prefix={<DollarOutlined />} precision={2} />
+            <Statistic title="月预算 (元)" value={centsToYuanNum(settings?.workspace?.monthly_budget_cents)}
+              prefix="¥" precision={2} />
             <div style={{ marginTop: 8 }}>
               <Space>
                 <InputNumber min={0} step={10} style={{ width: 160 }}
                   placeholder="月预算 (元)"
-                  defaultValue={settings?.workspace?.monthly_budget_cents / 100}
+                  defaultValue={centsToYuanNum(settings?.workspace?.monthly_budget_cents)}
                   onBlur={(e) => {
                     const v = parseFloat((e.target as HTMLInputElement).value);
                     if (!isNaN(v) && v >= 0) saveWorkspaceBudget({ monthly: v });
@@ -145,13 +144,13 @@ export function BudgetPage() {
             </div>
           </Col>
           <Col span={8}>
-            <Statistic title="日预算 (元)" value={settings?.workspace?.daily_budget_cents / 100}
-              prefix={<DollarOutlined />} precision={2} />
+            <Statistic title="日预算 (元)" value={centsToYuanNum(settings?.workspace?.daily_budget_cents)}
+              prefix="¥" precision={2} />
             <div style={{ marginTop: 8 }}>
               <Space>
                 <InputNumber min={0} step={1} style={{ width: 160 }}
                   placeholder="日预算 (元)"
-                  defaultValue={settings?.workspace?.daily_budget_cents / 100}
+                  defaultValue={centsToYuanNum(settings?.workspace?.daily_budget_cents)}
                   onBlur={(e) => {
                     const v = parseFloat((e.target as HTMLInputElement).value);
                     if (!isNaN(v) && v >= 0) saveWorkspaceBudget({ daily: v });
@@ -178,7 +177,7 @@ export function BudgetPage() {
       </Card>
 
       {/* API Key Budgets — 三级预算：Workspace(一级) → Key(二级) → Provider(三级) */}
-      <Card title={<><DollarOutlined /> API Key 预算 (二级)</>}
+      <Card title={<>¥ API Key 预算 (二级)</>}
         extra={<Typography.Text type="secondary" style={{ fontSize: 12 }}>
           💡 Key 预算 = 硬上限 · 展开行设置各 Provider 子预算
         </Typography.Text>}
@@ -209,7 +208,7 @@ export function BudgetPage() {
                   title={() => (
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                       Provider 子预算 (三级) — 各 Provider 独立上限，合计不得超过 Key 总预算
-                      {keyMonthly > 0 && <> · Key 月总预算 ¥{yuan(keyMonthly)} · 子预算合计 ¥{yuan(bindingMonthlyTotal)}</>}
+                      {keyMonthly > 0 && <> · Key 月总预算 {formatCost(keyMonthly)} · 子预算合计 {formatCost(bindingMonthlyTotal)}</>}
                     </Typography.Text>
                   )}
                   columns={[
@@ -232,7 +231,7 @@ export function BudgetPage() {
                         const { percent, level } = budgetProgress(b.monthly_spent, b.monthly_budget_cents);
                         return (
                           <div>
-                            <span style={{ fontSize: 12 }}>¥{yuan(b.monthly_spent)} / ¥{yuan(b.monthly_budget_cents)}</span>
+                            <span style={{ fontSize: 12 }}>{formatCost(b.monthly_spent)} / {formatCost(b.monthly_budget_cents)}</span>
                             {b.monthly_budget_cents > 0 && (
                               <Progress percent={Math.min(percent, 100)} size="small" strokeColor={LEVEL_CONFIG[level].color} />
                             )}
@@ -246,7 +245,7 @@ export function BudgetPage() {
                         const { percent, level } = budgetProgress(b.daily_spent, b.daily_budget_cents);
                         return (
                           <div>
-                            <span style={{ fontSize: 12 }}>¥{yuan(b.daily_spent)} / ¥{yuan(b.daily_budget_cents)}</span>
+                            <span style={{ fontSize: 12 }}>{formatCost(b.daily_spent)} / {formatCost(b.daily_budget_cents)}</span>
                             {b.daily_budget_cents > 0 && (
                               <Progress percent={Math.min(percent, 100)} size="small" strokeColor={LEVEL_CONFIG[level].color} />
                             )}
@@ -279,11 +278,11 @@ export function BudgetPage() {
               render: (_: any, r: any) => (
                 <InputNumber size="small" min={0} step={10} style={{ width: 100 }}
                   placeholder="硬上限"
-                  defaultValue={r.monthly_budget_cents / 100}
+                  defaultValue={centsToYuanNum(r.monthly_budget_cents)}
                   onPressEnter={(e) => saveKeyBudget(r.id, { monthly: parseFloat((e.target as HTMLInputElement).value) || 0 })}
                   onBlur={(e) => {
                     const v = parseFloat((e.target as HTMLInputElement).value);
-                    if (!isNaN(v) && v >= 0 && v !== r.monthly_budget_cents / 100) {
+                    if (!isNaN(v) && v >= 0 && v !== centsToYuanNum(r.monthly_budget_cents)) {
                       saveKeyBudget(r.id, { monthly: v });
                     }
                   }} />
@@ -294,11 +293,11 @@ export function BudgetPage() {
               render: (_: any, r: any) => (
                 <InputNumber size="small" min={0} step={1} style={{ width: 100 }}
                   placeholder="硬上限"
-                  defaultValue={r.daily_budget_cents / 100}
+                  defaultValue={centsToYuanNum(r.daily_budget_cents)}
                   onPressEnter={(e) => saveKeyBudget(r.id, { daily: parseFloat((e.target as HTMLInputElement).value) || 0 })}
                   onBlur={(e) => {
                     const v = parseFloat((e.target as HTMLInputElement).value);
-                    if (!isNaN(v) && v >= 0 && v !== r.daily_budget_cents / 100) {
+                    if (!isNaN(v) && v >= 0 && v !== centsToYuanNum(r.daily_budget_cents)) {
                       saveKeyBudget(r.id, { daily: v });
                     }
                   }} />
@@ -310,7 +309,7 @@ export function BudgetPage() {
                 const { percent, level } = budgetProgress(r.monthly_spent, r.monthly_budget_cents);
                 return (
                   <div>
-                    <span style={{ fontSize: 12 }}>¥{yuan(r.monthly_spent)} / ¥{yuan(r.monthly_budget_cents)}</span>
+                    <span style={{ fontSize: 12 }}>{formatCost(r.monthly_spent)} / {formatCost(r.monthly_budget_cents)}</span>
                     {r.monthly_budget_cents > 0 ? (
                       <Progress percent={Math.min(percent, 100)} size="small" strokeColor={LEVEL_CONFIG[level].color} />
                     ) : <Typography.Text type="secondary" style={{ fontSize: 11 }}>未设置</Typography.Text>}
@@ -325,7 +324,7 @@ export function BudgetPage() {
                 const { percent, level } = budgetProgress(r.daily_spent, r.daily_budget_cents);
                 return (
                   <div>
-                    <span style={{ fontSize: 12 }}>¥{yuan(r.daily_spent)} / ¥{yuan(r.daily_budget_cents)}</span>
+                    <span style={{ fontSize: 12 }}>{formatCost(r.daily_spent)} / {formatCost(r.daily_budget_cents)}</span>
                     {r.daily_budget_cents > 0 ? (
                       <Progress percent={Math.min(percent, 100)} size="small" strokeColor={LEVEL_CONFIG[level].color} />
                     ) : <Typography.Text type="secondary" style={{ fontSize: 11 }}>未设置</Typography.Text>}
@@ -368,16 +367,16 @@ export function BudgetPage() {
               <div className="bind-monthly">
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>月预算 (元)</Typography.Text>
                 <InputNumber min={0} step={1} style={{ width: 140 }}
-                  defaultValue={editingBinding.monthly_budget_cents / 100} />
+                  defaultValue={centsToYuanNum(editingBinding.monthly_budget_cents)} />
               </div>
               <div className="bind-daily">
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>日预算 (元)</Typography.Text>
                 <InputNumber min={0} step={1} style={{ width: 140 }}
-                  defaultValue={editingBinding.daily_budget_cents / 100} />
+                  defaultValue={centsToYuanNum(editingBinding.daily_budget_cents)} />
               </div>
             </Space>
             <div style={{ marginTop: 12, fontSize: 12, color: '#888' }}>
-              月已用: ¥{yuan(editingBinding.monthly_spent)} | 日已用: ¥{yuan(editingBinding.daily_spent)}
+              月已用: {formatCost(editingBinding.monthly_spent)} | 日已用: {formatCost(editingBinding.daily_spent)}
             </div>
           </div>
         )}
@@ -414,7 +413,7 @@ export function BudgetPage() {
             },
             {
               title: '月花费上限 (元)', dataIndex: 'monthly_cost_limit_cents', width: 130,
-              render: (v: number) => v > 0 ? `¥${(v / 100).toFixed(2)}` : '未设置',
+              render: (v: number) => v > 0 ? formatCost(v) : '未设置',
             },
             {
               title: '本月已用', key: 'monthly_cost', width: 140,
@@ -439,7 +438,7 @@ export function BudgetPage() {
                     placeholder="日Token" defaultValue={r.daily_token_limit}
                     onPressEnter={(e) => saveAgentBudget(r.id, { daily_tokens: parseInt((e.target as HTMLInputElement).value) || 0 })} />
                   <InputNumber size="small" min={0} step={10} style={{ width: 80 }}
-                    placeholder="月花费" defaultValue={r.monthly_cost_limit_cents / 100}
+                    placeholder="月花费" defaultValue={centsToYuanNum(r.monthly_cost_limit_cents)}
                     onPressEnter={(e) => saveAgentBudget(r.id, { monthly_cost: parseFloat((e.target as HTMLInputElement).value) || 0 })} />
                   <Button size="small" type="link">保存</Button>
                 </Space>
@@ -461,12 +460,12 @@ export function BudgetPage() {
         <Col span={4}>
           <Card size="small" style={{ height: 130 }}>
             <Statistic title="月预算利用率" value={ws.monthly_percent || 0}
-              suffix="%" prefix={<DollarOutlined />}
+              suffix="%" prefix="¥"
               valueStyle={{ fontSize: 22, color: ws.monthly_percent >= 85 ? '#ff4d4f' : ws.monthly_percent >= 70 ? '#fa8c16' : '#1677ff' }} />
             <Progress percent={Math.min(ws.monthly_percent || 0, 100)} size="small"
               strokeColor={budgetProgress(ws.monthly_spent_cents || 0, ws.monthly_budget_cents || 0).level === 'cutoff' ? '#ff4d4f' : '#1677ff'} />
             <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-              ¥{yuan(ws.monthly_spent_cents || 0)} / ¥{yuan(ws.monthly_budget_cents || 0)}
+              {formatCost(ws.monthly_spent_cents || 0)} / {formatCost(ws.monthly_budget_cents || 0)}
             </Typography.Text>
           </Card>
         </Col>
@@ -478,22 +477,22 @@ export function BudgetPage() {
             <Progress percent={Math.min(ws.daily_percent || 0, 100)} size="small"
               strokeColor={budgetProgress(ws.daily_spent_cents || 0, ws.daily_budget_cents || 0).level === 'cutoff' ? '#ff4d4f' : '#1677ff'} />
             <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-              ¥{yuan(ws.daily_spent_cents || 0)} / ¥{yuan(ws.daily_budget_cents || 0)}
+              {formatCost(ws.daily_spent_cents || 0)} / {formatCost(ws.daily_budget_cents || 0)}
             </Typography.Text>
           </Card>
         </Col>
         <Col span={4}>
           <Card size="small" style={{ height: 130 }}>
-            <Statistic title="月已花费" value={`¥${yuan(ws.monthly_spent_cents || 0)}`}
+            <Statistic title="月已花费" value={formatCost(ws.monthly_spent_cents || 0)}
               valueStyle={{ fontSize: 22 }} />
-            <Typography.Text type="secondary" style={{ fontSize: 11 }}>预算 ¥{yuan(ws.monthly_budget_cents || 0)}</Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 11 }}>预算 {formatCost(ws.monthly_budget_cents || 0)}</Typography.Text>
           </Card>
         </Col>
         <Col span={4}>
           <Card size="small" style={{ height: 130 }}>
-            <Statistic title="今日花费" value={`¥${yuan(ws.daily_spent_cents || 0)}`}
+            <Statistic title="今日花费" value={formatCost(ws.daily_spent_cents || 0)}
               valueStyle={{ fontSize: 22 }} />
-            <Typography.Text type="secondary" style={{ fontSize: 11 }}>日预算 ¥{yuan(ws.daily_budget_cents || 0)}</Typography.Text>
+            <Typography.Text type="secondary" style={{ fontSize: 11 }}>日预算 {formatCost(ws.daily_budget_cents || 0)}</Typography.Text>
           </Card>
         </Col>
         <Col span={4}>
@@ -504,19 +503,19 @@ export function BudgetPage() {
                 valueStyle={{ fontSize: 22, color: (ws.forecast_days_remaining || 0) < 7 ? '#ff4d4f' : '#1677ff' }} />
             </Tooltip>
             <Typography.Text type="secondary" style={{ fontSize: 10 }}>
-              剩余 ¥{yuan((ws.monthly_budget_cents || 0) - (ws.monthly_spent_cents || 0))} ÷ 日均 ¥{yuan((ws.monthly_spent_cents || 0) / Math.max(new Date().getDate(), 1))}
+              剩余 {formatCost((ws.monthly_budget_cents || 0) - (ws.monthly_spent_cents || 0))} ÷ 日均 {formatCost((ws.monthly_spent_cents || 0) / Math.max(new Date().getDate(), 1))}
             </Typography.Text>
           </Card>
         </Col>
         <Col span={4}>
           <Card size="small" style={{ height: 130 }}>
             <Tooltip title="(月预算 - 月已花费) ÷ 本月剩余天数">
-              <Statistic title="建议日消费" value={ws.suggested_daily_limit ? `¥${yuan(ws.suggested_daily_limit)}` : '-'}
+              <Statistic title="建议日消费" value={ws.suggested_daily_limit ? formatCost(ws.suggested_daily_limit) : '-'}
                 prefix={<RiseOutlined />}
                 valueStyle={{ fontSize: 22, color: '#1677ff' }} />
             </Tooltip>
             <Typography.Text type="secondary" style={{ fontSize: 10 }}>
-              剩余 ¥{yuan((ws.monthly_budget_cents || 0) - (ws.monthly_spent_cents || 0))} ÷ 剩余 {(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - d.getDate(); })()} 天
+              剩余 {formatCost((ws.monthly_budget_cents || 0) - (ws.monthly_spent_cents || 0))} ÷ 剩余 {(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - d.getDate(); })()} 天
             </Typography.Text>
           </Card>
         </Col>

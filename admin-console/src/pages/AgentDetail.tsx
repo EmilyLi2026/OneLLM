@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Descriptions, Tag, Typography, Row, Col, Statistic, Empty, List, Space } from 'antd';
 import { agentsAPI, logsAPI } from '../api/client';
+import { formatCost } from '../utils/format';
 
 export function AgentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +26,7 @@ export function AgentDetailPage() {
       <Typography.Title level={4}>{agent.name}</Typography.Title>
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}><Card><Statistic title="Token 消耗" value={agent.total_tokens} /></Card></Col>
-        <Col span={6}><Card><Statistic title="费用" value={(agent.total_cost_cents / 100).toFixed(2)} prefix="¥" /></Card></Col>
+        <Col span={6}><Card><Statistic title="费用" value={formatCost(agent.total_cost_cents)} /></Card></Col>
         <Col span={6}><Card><Statistic title="状态" value={agent.status === 'active' ? '活跃' : agent.status} /></Card></Col>
         <Col span={6}><Card><Statistic title="Tier" value={`T${agent.execution_tier}`} /></Card></Col>
       </Row>
@@ -63,7 +64,7 @@ export function AgentDetailPage() {
                   )}
                 </Space>
                 <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                  ¥{((r.cost_cents || 0) / 100).toFixed(4)}
+                  {formatCost(r.cost_cents || 0, 4)}
                 </Typography.Text>
               </Space>
             </List.Item>

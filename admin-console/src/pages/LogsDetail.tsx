@@ -11,6 +11,7 @@ import {
   ThunderboltOutlined, DollarOutlined, ClockCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, KeyOutlined,
 } from '@ant-design/icons';
 import { logsAPI, agentsAPI, keysAPI, api } from '../api/client';
+import { formatCost } from '../utils/format';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -218,7 +219,7 @@ export function LogsDetailPage() {
       sorter: true,
       sortOrder: getSortOrder('tokens_out') },
     { title: '花费', dataIndex: 'cost_cents', key: 'cost_cents', width: 90,
-      render: (v: number) => `¥${((v || 0) / 100).toFixed(4)}`,
+      render: (v: number) => formatCost(v || 0, 4),
       sorter: true,
       sortOrder: getSortOrder('cost_cents') },
     { title: '延迟', dataIndex: 'latency_ms', key: 'latency_ms', width: 80,
@@ -284,7 +285,7 @@ export function LogsDetailPage() {
         <Col flex="1">
           <Card size="small" hoverable>
             <Statistic title="总花费" value={`¥${summary.total_cost_yuan || '0.00'}`}
-              prefix={<DollarOutlined />} valueStyle={{ fontSize: 20 }} />
+              prefix="¥" valueStyle={{ fontSize: 20 }} />
           </Card>
         </Col>
         <Col flex="1">

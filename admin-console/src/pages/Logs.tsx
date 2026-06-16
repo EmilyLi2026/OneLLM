@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons';
 import { Line, Pie, Column } from '@ant-design/charts';
 import { api, agentsAPI, keysAPI } from '../api/client';
+import { formatCost, centsToYuanNum } from '../utils/format';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -78,7 +79,7 @@ export function LogsPage() {
       ]);
       const trendData = (trendRes.data.data || []).map((d: any) => ({
         ...d,
-        total_cost_yuan: Number(d.total_cost_cents) / 100,
+        total_cost_yuan: centsToYuanNum(Number(d.total_cost_cents)),
         total_tokens: Number(d.total_tokens_in) + Number(d.total_tokens_out),
       }));
       const statsData = statsRes.data.data;
@@ -254,8 +255,8 @@ export function LogsPage() {
         </Col>
         <Col span={4}>
           <Card size="small">
-            <Statistic title="总花费" value={`¥${((summary.cost || 0) / 100).toFixed(2)}`}
-              prefix={<DollarOutlined />} valueStyle={{ fontSize: 22 }} />
+            <Statistic title="总花费" value={formatCost(summary.cost || 0)}
+              prefix="¥" valueStyle={{ fontSize: 22 }} />
           </Card>
         </Col>
         <Col span={4}>
@@ -275,7 +276,7 @@ export function LogsPage() {
                 height={260}
                 data={trend.map((d: any) => ({
                   date: d.date,
-                  cost: Number(d.total_cost_cents) / 100,
+                  cost: centsToYuanNum(Number(d.total_cost_cents)),
                 }))}
                 xField="date"
                 yField="cost"
@@ -347,7 +348,7 @@ export function LogsPage() {
                 height={300}
                 data={stats.map((s: any) => ({
                   model: s.name || 'unknown',
-                  cost: Number(s.total_cost_cents) / 100,
+                  cost: centsToYuanNum(Number(s.total_cost_cents)),
                 }))}
                 xField="model"
                 yField="cost"
@@ -398,7 +399,7 @@ export function LogsPage() {
                 height={300}
                 data={apiKeyStats.map((s: any) => ({
                   key: s.name || 'unknown',
-                  cost: Number(s.total_cost_cents) / 100,
+                  cost: centsToYuanNum(Number(s.total_cost_cents)),
                 }))}
                 xField="key"
                 yField="cost"

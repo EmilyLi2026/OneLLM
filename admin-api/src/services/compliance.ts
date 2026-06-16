@@ -810,7 +810,4 @@ function buildCapabilitySummary(modelUsage: any[]): CapabilityEntry[] {
   }));
 }
 
-function centsToYuan(cents: number | string | null | undefined): string {
-  const n = Number(cents) || 0;
-  return (n / 100).toFixed(2);
-}
+import { centsToYuan } from '../utils/currency';

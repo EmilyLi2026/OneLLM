@@ -11,6 +11,14 @@ import pool, { genId } from '../db/pool';
 import { discoverModels, getProviderDisplay, DiscoveredModel } from './discovery';
 import { RowDataPacket } from 'mysql2';
 
+const DEFAULT_USD_CNY_RATE = 7.25;
+function getExchangeRate(): number {
+  const raw = process.env.USD_CNY_RATE;
+  if (!raw) return DEFAULT_USD_CNY_RATE;
+  const rate = parseFloat(raw);
+  return isNaN(rate) || rate <= 0 ? DEFAULT_USD_CNY_RATE : rate;
+}
+
 let _syncRunning = false;
 let _lastSyncTime: number | null = null;
 let _lastSyncCount = 0;
@@ -113,9 +121,10 @@ export async function runSync(): Promise<{ synced: number; providersCreated: num
         ? dm.id.substring(dm.id.lastIndexOf('/') + 1)
         : dm.id;
 
-      // Pricing: OpenRouter returns $/token as string, convert to cents per 1M
-      const inputCents = Math.round(parseFloat(dm.pricing.prompt || '0') * 1_000_000);
-      const outputCents = Math.round(parseFloat(dm.pricing.completion || '0') * 1_000_000);
+      // Pricing: OpenRouter returns USD/token → convert to RMB fen per 1M tokens
+      const rate = getExchangeRate();
+      const inputFen = Math.round(parseFloat(dm.pricing.prompt || '0') * 1_000_000 * 100 * rate);
+      const outputFen = Math.round(parseFloat(dm.pricing.completion || '0') * 1_000_000 * 100 * rate);
 
       try {
         // Check both model_id AND openrouter_model_id for seed data cross-matching
@@ -140,7 +149,7 @@ export async function runSync(): Promise<{ synced: number; providersCreated: num
               ...(needsOpenRouterId ? [dm.id] : []),
               providerModelId,
               dm.description || null, dm.context_length, dm.max_output_tokens,
-              inputCents, outputCents, caps, existing[0].id
+              inputFen, outputFen, caps, existing[0].id
             ]
           );
         } else {
@@ -154,7 +163,7 @@ export async function runSync(): Promise<{ synced: number; providersCreated: num
             [genId('model'), providerId, seriesId,
              dm.name, dm.id, dm.id, providerModelId,
              dm.description || null, dm.context_length, dm.max_output_tokens,
-             inputCents, outputCents, caps]
+             inputFen, outputFen, caps]
           );
         }
         synced++;

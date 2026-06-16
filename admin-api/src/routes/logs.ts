@@ -7,6 +7,7 @@ import { Router } from 'express';
 import pool from '../db/pool';
 import { AuthRequest } from '../middleware/auth';
 import { RowDataPacket } from 'mysql2';
+import { centsToYuan } from '../utils/currency';
 
 export const logsRouter = Router();
 
@@ -158,7 +159,7 @@ logsRouter.get('/', async (req: AuthRequest, res) => {
           total_tokens_out: Number(summary.total_tokens_out),
           total_tokens: Number(summary.total_tokens),
           total_cost_cents: Number(summary.total_cost_cents),
-          total_cost_yuan: (Number(summary.total_cost_cents) / 100).toFixed(2),
+          total_cost_yuan: centsToYuan(summary.total_cost_cents),
           avg_latency_ms: Math.round(Number(summary.avg_latency_ms)),
           total_requests: Number(summary.total_requests),
           success_count: Number(summary.success_count),
