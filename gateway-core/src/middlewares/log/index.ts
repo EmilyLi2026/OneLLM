@@ -151,25 +151,35 @@ function extractTextContent(content: any): string {
 }
 
 /**
- * Derive conversation labels from the request messages — no client cooperation needed.
- * Uses rule-based extraction to semantically distill key info from prompts.
- * Extracts: agent_role (role title), action_label (action intent),
- * conversation_turn (message count), session_id (fingerprint for grouping).
+ * Derive conversation labels from the request messages.
+ *
+ * agent_role   → system prompt fingerprint (hash), later resolved to scene label by admin-api
+ * action_label → tool info (priority) or user-message regex extraction
+ * conversation_turn → count of user messages in this request
+ * session_id  → fingerprint for cross-request grouping
+ *
+ * @param requestOptionsArray - gateway request log data
+ * @param toolName  - from agent framework header (x-onellm-tool-name)
+ * @param toolAction - from agent framework header (x-onellm-tool-action)
  */
-function deriveLabelsFromMessages(requestOptionsArray: any[]): Record<string, any> {
+function deriveLabelsFromMessages(
+  requestOptionsArray: any[],
+  toolName?: string | null,
+  toolAction?: string | null
+): Record<string, any> {
   const messages = requestOptionsArray[0]?.requestParams?.messages;
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return { agent_role: null, action_label: null, conversation_turn: null, session_id: null };
   }
 
-  // Find system prompt → agent's role/identity
+  // Find system prompt → compute fingerprint for scene grouping
   // Anthropic: system is top-level, not in messages. Check top-level system field too.
   const systemMsg = messages.find((m: any) => m.role === 'system');
   const systemContent = extractTextContent(systemMsg?.content)
     || extractTextContent(requestOptionsArray[0]?.requestParams?.system)
     || '';
 
-  // Find user messages → current action
+  // Find user messages → action extraction
   const userMessages = messages.filter((m: any) => m.role === 'user');
   const lastUserMsg = userMessages[userMessages.length - 1];
 
@@ -180,47 +190,52 @@ function deriveLabelsFromMessages(requestOptionsArray: any[]): Record<string, an
     : null;
 
   return {
-    agent_role: extractAgentRole(systemContent),
-    action_label: extractActionLabel(extractTextContent(lastUserMsg?.content)),
+    agent_role: computePromptFingerprint(systemContent),
+    action_label: extractActionLabel(extractTextContent(lastUserMsg?.content), toolName, toolAction),
     conversation_turn: userMessages.length || null,
     session_id: sessionId,
   };
 }
 
 /**
- * Semantically extract just the agent's role title from system prompt.
- * Rules (in priority order):
- *   1. "- Role: XXX" → "XXX"
- *   2. "你是XXX" / "你是一个XXX" → "XXX"
- *   3. First sentence, truncated
+ * Compute a deterministic fingerprint for a system prompt.
+ * Used to group identical prompt templates → same scene label.
+ * Normalizes whitespace, then hashes with djb2 → hex.
+ * Returns null if content is empty.
  */
-function extractAgentRole(content: string): string | null {
+function computePromptFingerprint(content: string): string | null {
   if (!content) return null;
-
-  // Pattern 1: "- Role: 角色名 -" (common in structured prompts)
-  const roleMatch = content.match(/-\s*Role:\s*(.+?)(?:\s*-\s*|\n|$)/);
-  if (roleMatch) return roleMatch[1].trim();
-
-  // Pattern 2a: "你是XXX" (end at first punctuation)
-  const youAre = content.match(/你是(?:一个?|专业的?|)?(.{2,50}?)[，,。\.!！;；]/);
-  if (youAre) return youAre[1].trim();
-
-  // Pattern 2b: "你是一个XXX" (no following punctuation, take up to 40 chars)
-  const youAreSimple = content.match(/你是(?:一个?|专业的?|)(.{2,40})$/);
-  if (youAreSimple) return youAreSimple[1].trim();
-
-  // Fallback: clean and take first 80 chars
-  return content.replace(/\s+/g, ' ').trim().substring(0, 80);
+  // Normalize: collapse whitespace, trim, take first 500 chars as signature
+  const normalized = content.replace(/\s+/g, ' ').trim().substring(0, 500);
+  if (!normalized) return null;
+  // djb2 hash → 8-char hex
+  let hash = 5381;
+  for (let i = 0; i < normalized.length; i++) {
+    hash = ((hash << 5) + hash + normalized.charCodeAt(i)) & 0xffffffff;
+  }
+  return 'fp_' + (hash >>> 0).toString(16).padStart(8, '0');
 }
 
 /**
- * Semantically extract the action intent from the user message.
- * Rules (in priority order):
- *   1. Text before structured data ({, 【, 根据如下)
- *   2. First sentence
- *   3. Truncated
+ * Extract the action/task label for this request.
+ * Priority:
+ *   1. Tool info from Agent framework → "[tool_action] tool_name"
+ *   2. Text before structured data in user message
+ *   3. First sentence of user message
+ *   4. Truncated user message
+ *
+ * @param content  - extracted text from last user message
+ * @param toolName - from x-onellm-tool-name header
+ * @param toolAction - from x-onellm-tool-action header (defaults to "调用")
  */
-function extractActionLabel(content: string): string | null {
+function extractActionLabel(content: string, toolName?: string | null, toolAction?: string | null): string | null {
+  // Priority 1: structured tool info from Agent framework
+  if (toolName) {
+    const action = toolAction || '调用';
+    return `${action} ${toolName}`;
+  }
+
+  // Fall through to user-message extraction (no tool info available)
   if (!content) return null;
 
   // Clean but preserve structure
@@ -349,7 +364,12 @@ async function processLog(c: Context, start: number) {
   const apiKeyId = authContext.api_key_id || null;
 
   // Derive conversation labels from request messages (zero-cost, from in-memory request body)
-  const derivedLabels = deriveLabelsFromMessages(requestOptionsArray);
+  // Pass tool info so action_label can use "[tool_action] tool_name" when available
+  const derivedLabels = deriveLabelsFromMessages(
+    requestOptionsArray,
+    agentContext.tool_name as string | null,
+    agentContext.tool_action as string | null
+  );
 
   // Extract full input/output content for conversation logging (MEDIUMTEXT)
   const messages = requestOptionsArray[0]?.requestParams?.messages || [];

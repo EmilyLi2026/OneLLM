@@ -436,10 +436,11 @@ internalRouter.post('/log-request', async (req, res) => {
       ]
     );
 
-    // Fire-and-forget: semantically summarize agent_role / action_label via LLM
+    // Fire-and-forget: refine agent_role (scene) / action_label (task) via LLM
+    // Pass tool info so action_label can use "[tool_action] tool_name" when available
     const logId = insertResult?.insertId;
     if (logId && log.request_input) {
-      summarizeLogEntry(logId, log.request_input);
+      summarizeLogEntry(logId, log.request_input, log.tool_name, log.tool_action);
     }
 
     // Trigger budget checks (fire-and-forget)

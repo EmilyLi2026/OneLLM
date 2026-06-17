@@ -1,8 +1,9 @@
 /**
- * Auth Routes — Phone + SMS verification code only
+ * Auth Routes — Phone + SMS verification code / Password dual-mode login
  */
 
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import pool, { genId } from '../db/pool';
 import { generateToken } from '../middleware/auth';
 import { RowDataPacket } from 'mysql2';
@@ -118,10 +119,74 @@ authRouter.post('/send-code', async (req, res) => {
   }
 });
 
-/** POST /api/v1/auth/login — phone + verification code */
+/** POST /api/v1/auth/login — phone + verification code OR phone + password */
 authRouter.post('/login', async (req, res) => {
   try {
-    const { phone, code } = req.body;
+    const { phone, code, password } = req.body;
+
+    // ── Mode: phone + password ──
+    if (password && !code) {
+      if (!phone) {
+        return res.status(400).json({ status: 'error', message: '请填写手机号' });
+      }
+      const phoneDigits = phone.replace(/\D/g, '');
+
+      // Check brute-force lockout
+      const lockoutCheck = checkLoginLockout(phoneDigits);
+      if (!lockoutCheck.allowed) {
+        return res.status(429).json({
+          status: 'error',
+          message: `密码错误次数过多，请${Math.ceil((lockoutCheck.retryAfterSec || 60) / 60)} 分钟后再试或使用验证码登录`,
+        });
+      }
+
+      // Find user
+      const [users] = await pool.query<UserRow[]>(
+        'SELECT id, email, phone, password_hash, name FROM users WHERE phone = ?',
+        [phoneDigits]
+      );
+      if (users.length === 0) {
+        return res.status(401).json({ status: 'error', message: '该手机号未注册，请先用验证码登录' });
+      }
+      const user = users[0];
+
+      // Validate password
+      if (!user.password_hash) {
+        return res.status(401).json({ status: 'error', message: '尚未设置密码，请先用验证码登录后设置密码' });
+      }
+      const valid = await bcrypt.compare(password, user.password_hash);
+      if (!valid) {
+        recordLoginFailure(phoneDigits);
+        return res.status(401).json({ status: 'error', message: '密码错误，请重试' });
+      }
+
+      resetLoginFailures(phoneDigits);
+
+      // Get workspace
+      const [wss] = await pool.query<any[]>(
+        `SELECT w.id, w.name as ws_name, wm.role FROM workspaces w
+         JOIN workspace_members wm ON w.id = wm.workspace_id
+         WHERE wm.user_id = ? ORDER BY w.created_at ASC LIMIT 1`,
+        [user.id]
+      );
+      const workspaceId = wss.length > 0 ? wss[0].id : undefined;
+      const role = wss.length > 0 ? wss[0].role : 'member';
+      const workspaceName = wss.length > 0 ? wss[0].ws_name : undefined;
+
+      const token = generateToken(user.id, workspaceId, role);
+
+      return res.json({
+        status: 'success',
+        data: {
+          user: { id: user.id, email: user.email || '', phone: user.phone || phoneDigits, name: user.name },
+          workspace: workspaceId ? { id: workspaceId, name: workspaceName, role } : null,
+          has_password: !!user.password_hash,
+          token,
+        },
+      });
+    }
+
+    // ── Mode: phone + verification code (existing logic) ──
     if (!phone || !code) {
       return res.status(400).json({ status: 'error', message: '请填写手机号和验证码' });
     }
@@ -160,18 +225,20 @@ authRouter.post('/login', async (req, res) => {
 
     // Find existing user by phone
     const [existing] = await pool.query<UserRow[]>(
-      'SELECT id, email, phone, name FROM users WHERE phone = ?',
+      'SELECT id, email, phone, name, password_hash FROM users WHERE phone = ?',
       [phoneDigits]
     );
 
     let userId: string;
     let userName: string;
     let userEmail: string;
+    let hasPassword = false;
 
     if (existing.length > 0) {
       userId = existing[0].id;
       userName = existing[0].name;
       userEmail = existing[0].email || '';
+      hasPassword = !!existing[0].password_hash;
     } else {
       // Auto-register
       userId = genId('user');
@@ -213,11 +280,58 @@ authRouter.post('/login', async (req, res) => {
       data: {
         user: { id: userId, email: userEmail, phone: phoneDigits, name: userName },
         workspace: workspaceId ? { id: workspaceId, name: workspaceName, role } : null,
+        has_password: hasPassword,
         token,
       },
     });
   } catch (error: any) {
     console.error('Login error:', error);
+    return res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
+/** POST /api/v1/auth/set-password — Set password after SMS login (requires valid JWT) */
+authRouter.post('/set-password', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ status: 'error', message: 'Not authenticated' });
+    }
+
+    const jwt = await import('jsonwebtoken');
+    let payload: { sub: string };
+    try {
+      payload = jwt.default.verify(
+        authHeader.split(' ')[1],
+        process.env.JWT_SECRET || 'onellm-dev-secret-change-in-production'
+      ) as { sub: string };
+    } catch {
+      return res.status(401).json({ status: 'error', message: 'Token invalid or expired' });
+    }
+
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ status: 'error', message: '密码至少需要6位' });
+    }
+
+    // Check user exists and doesn't already have a password
+    const [users] = await pool.query<UserRow[]>(
+      'SELECT id, password_hash FROM users WHERE id = ?',
+      [payload.sub]
+    );
+    if (users.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'User not found' });
+    }
+    if (users[0].password_hash) {
+      return res.status(400).json({ status: 'error', message: '密码已设置，如需修改请前往设置页面' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [hash, payload.sub]);
+
+    return res.json({ status: 'success', data: { message: '密码设置成功' } });
+  } catch (error: any) {
+    console.error('Set password error:', error);
     return res.status(500).json({ status: 'error', message: error.message });
   }
 });

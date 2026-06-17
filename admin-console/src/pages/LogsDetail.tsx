@@ -202,11 +202,11 @@ export function LogsDetailPage() {
       render: (v: string) => <Tag color={v === 'unknown' ? 'default' : 'blue'}>{v}</Tag> },
     { title: '模型', dataIndex: 'model', key: 'model', width: 140,
       render: (v: string) => <Tag>{v}</Tag> },
-    { title: '智能体角色', dataIndex: 'agent_role', key: 'agent_role', width: 140,
+    { title: '执行流程', dataIndex: 'agent_role', key: 'agent_role', width: 140,
       render: (v: string) => v
         ? <Tooltip title={v}><Tag color="geekblue">{v.length > 18 ? v.substring(0, 18) + '…' : v}</Tag></Tooltip>
         : '-' },
-    { title: '用户操作', dataIndex: 'action_label', key: 'action_label', width: 180,
+    { title: '执行任务', dataIndex: 'action_label', key: 'action_label', width: 180,
       render: (v: string) => v
         ? <Tooltip title={v}><Typography.Text style={{ fontSize: 12 }}>{v.length > 28 ? v.substring(0, 28) + '…' : v}</Typography.Text></Tooltip>
         : '-' },

@@ -35,6 +35,12 @@ export const authAPI = {
     api.post('/auth/send-code', { phone }),
   loginWithPhone: (phone: string, code: string) =>
     api.post('/auth/login', { phone, code }),
+  loginWithPassword: (phone: string, password: string) =>
+    api.post('/auth/login', { phone, password }),
+  setPassword: (token: string, password: string) =>
+    api.post('/auth/set-password', { password }, {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
   checkInvitation: (code: string) =>
     api.get('/auth/invitation-info', { params: { code } }),
   acceptInvitation: (code: string, phone: string, sms_code: string) =>
