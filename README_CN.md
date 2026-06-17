@@ -1,3 +1,5 @@
+[![EN](https://img.shields.io/badge/lang-English-blue)](README.md)
+[![ZH](https://img.shields.io/badge/lang-简体中文-green)](README_CN.md)
 <p align="center">
   <h1 align="center">🚀 OneLLM</h1>
   <p align="center">
