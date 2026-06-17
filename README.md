@@ -4,7 +4,7 @@
     <strong>One API, Every Model. Under Control.</strong>
   </p>
   <p align="center">
-    ai-gateway  lm-gateway agent-control openai-compatible
+    ai-gateway  llm-gateway agent-control openai-compatible
   </p>
 </p>
 
