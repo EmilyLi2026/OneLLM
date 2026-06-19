@@ -5,7 +5,7 @@
 -- ── Users ──
 CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(36) PRIMARY KEY,
-    email VARCHAR(255) DEFAULT NULL,
+    email VARCHAR(255) DEFAULT NULL UNIQUE,
     phone VARCHAR(20) DEFAULT NULL,
     password_hash VARCHAR(255) NOT NULL DEFAULT '',
     name VARCHAR(255) NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     workspace_id VARCHAR(36) NOT NULL,
     user_id VARCHAR(36) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    key_prefix VARCHAR(15) NOT NULL,
+    key_prefix VARCHAR(20) NOT NULL,
     key_hash VARCHAR(255) NOT NULL UNIQUE,
     scopes JSON DEFAULT NULL,
     provider_credential_id VARCHAR(36) DEFAULT NULL,
@@ -144,7 +144,8 @@ CREATE TABLE IF NOT EXISTS request_logs (
     INDEX idx_rl_action (action_label),
     INDEX idx_rl_session (session_id),
     INDEX idx_rl_created (created_at),
-    INDEX idx_rl_binding (binding_id)
+    INDEX idx_rl_binding (binding_id),
+    INDEX idx_rl_api_key (api_key_id)
 ) ENGINE=InnoDB;
 
 -- ── Audit Logs ──
@@ -210,6 +211,7 @@ CREATE TABLE IF NOT EXISTS model_specs (
     series_id VARCHAR(36),
     name VARCHAR(200) NOT NULL,
     model_id VARCHAR(200) NOT NULL,
+    provider_model_id VARCHAR(200) DEFAULT NULL COMMENT 'Provider-native model identifier (e.g. doubao-pro-256k)',
     openrouter_model_id VARCHAR(200) DEFAULT NULL COMMENT 'Corresponding OpenRouter model ID for cross-format matching',
     description TEXT,
     context_window INT DEFAULT 0,
@@ -227,6 +229,7 @@ CREATE TABLE IF NOT EXISTS model_specs (
     FOREIGN KEY (series_id) REFERENCES model_series(id) ON DELETE SET NULL,
     INDEX idx_ms_provider (provider_id),
     INDEX idx_ms_series (series_id),
+    INDEX idx_ms_provider_model (provider_model_id),
     UNIQUE KEY uk_ms_ws_model (workspace_id, model_id)
 ) ENGINE=InnoDB;
 
