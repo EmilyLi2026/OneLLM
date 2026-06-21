@@ -29,6 +29,8 @@ export function LoginPage() {
   const [mode, setMode] = useState<LoginMode>('code');
   const [setPwdStep, setSetPwdStep] = useState(false);
   const [smsToken, setSmsToken] = useState<string | null>(null);
+  const [smsUser, setSmsUser] = useState<any>(null);
+  const [smsWorkspace, setSmsWorkspace] = useState<any>(null);
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -118,7 +120,10 @@ export function LoginPage() {
         setTimeout(() => navigate('/'), 500);
       } else {
         // New user → show set-password step
+        // Save token + user/workspace so handleSetPassword can auto-login after
         setSmsToken(token);
+        setSmsUser(user);
+        setSmsWorkspace(workspace);
         setSetPwdStep(true);
         form.resetFields();
       }
@@ -155,6 +160,8 @@ export function LoginPage() {
     setLoading(true);
     try {
       await authAPI.setPassword(smsToken, values.password);
+      // Auto-login after password is set — store token & user info from SMS login
+      login(smsToken, smsUser, smsWorkspace);
       message.success('密码设置成功！正在跳转...');
       setTimeout(() => navigate('/'), 500);
     } catch (err: any) {
@@ -163,6 +170,10 @@ export function LoginPage() {
   };
 
   const handleSkipPassword = () => {
+    // Log the user in with SMS token even if they skip setting a password
+    if (smsToken && smsUser) {
+      login(smsToken, smsUser, smsWorkspace);
+    }
     navigate('/');
   };
 

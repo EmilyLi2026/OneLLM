@@ -16,14 +16,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401
+// Handle 401 — skip login endpoint (its 401 means "wrong code/password", not expired token)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('aihub_token');
-      localStorage.removeItem('aihub_user');
-      window.location.href = '/login';
+      // Don't redirect on login failures — let the LoginPage show the error
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+      if (!isLoginRequest) {
+        localStorage.removeItem('aihub_token');
+        localStorage.removeItem('aihub_user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
